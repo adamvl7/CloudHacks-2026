@@ -23,3 +23,12 @@ export async function getLatestSummary() {
     throw err
   }
 }
+
+export async function getPowerBreakdown() {
+  try {
+    const { data } = await client.get('/power-breakdown')
+    return data
+  } catch {
+    return null
+  }
+}

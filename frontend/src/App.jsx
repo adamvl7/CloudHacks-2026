@@ -3,7 +3,8 @@ import GridMeter from './components/GridMeter.jsx'
 import DecisionTimeline from './components/DecisionTimeline.jsx'
 import SavingsCard from './components/SavingsCard.jsx'
 import DailySummary from './components/DailySummary.jsx'
-import { getCurrent, getDecisions, getLatestSummary } from './api/ecoshiftClient.js'
+import PowerBreakdown from './components/PowerBreakdown.jsx'
+import { getCurrent, getDecisions, getLatestSummary, getPowerBreakdown } from './api/ecoshiftClient.js'
 
 const REFRESH_MS = 30_000
 
@@ -22,6 +23,7 @@ export default function App() {
   const [current, setCurrent] = useState(null)
   const [decisions, setDecisions] = useState([])
   const [summary, setSummary] = useState(null)
+  const [powerBreakdown, setPowerBreakdown] = useState(null)
   const [error, setError] = useState(null)
   const [lastFetch, setLastFetch] = useState(null)
 
@@ -29,15 +31,17 @@ export default function App() {
     let cancelled = false
     async function load() {
       try {
-        const [c, d, s] = await Promise.all([
+        const [c, d, s, pb] = await Promise.all([
           getCurrent().catch(() => null),
           getDecisions(24).catch(() => []),
           getLatestSummary().catch(() => null),
+          getPowerBreakdown().catch(() => null),
         ])
         if (cancelled) return
         setCurrent(c)
         setDecisions(d)
         setSummary(s)
+        setPowerBreakdown(pb)
         setLastFetch(new Date())
         setError(null)
       } catch (e) {
@@ -149,6 +153,11 @@ export default function App() {
               <div className="split-dirty" style={{ width: `${(counts.dirty / counts.total) * 100}%` }} />
             </div>
           )}
+        </div>
+
+        <div className="card">
+          <h3>Energy mix · {zone}</h3>
+          <PowerBreakdown data={powerBreakdown} />
         </div>
 
         <div className="card full">

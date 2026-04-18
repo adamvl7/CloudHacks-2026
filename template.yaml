@@ -319,8 +319,14 @@ Resources:
         Variables:
           DYNAMO_TABLE: !Ref DecisionsTable
           GREEN_THRESHOLD_GCO2: !Ref GreenThresholdGCO2
+          GRID_ZONE: !Ref GridZone
+          ELECTRICITYMAPS_SECRET_NAME: ecoshift/electricitymaps-api-key
       Policies:
         - DynamoDBReadPolicy: {TableName: !Ref DecisionsTable}
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:ecoshift/electricitymaps-api-key-*
       Events:
         GetDecisions:
           Type: HttpApi
@@ -339,6 +345,12 @@ Resources:
           Properties:
             ApiId: !Ref DashboardApi
             Path: /current
+            Method: GET
+        GetPowerBreakdown:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /power-breakdown
             Method: GET
 
   DashboardApi:
