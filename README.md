@@ -177,7 +177,7 @@ Newer, supports timezones natively (critical for "end of day" logic), and has a 
 
 ```
 ecoshift/
-├── README.md                          ← you are here
+├── README.md
 ├── template.yaml                      ← AWS SAM infrastructure definition
 ├── samconfig.toml                     ← SAM deploy config
 │
@@ -388,7 +388,12 @@ The key insight: **EcoShift doesn't reduce total energy use — it shifts *when*
 
 ## 👥 Team
 
-*[Add team member names, roles, and links here.]*
+| Name | GitHub |
+|------|--------|
+| Adam Le | [@adamvl7](https://github.com/adamvl7) |
+| Kevin Chhim | [@kevinlycc](https://github.com/kevinlycc) |
+| Ryan Ong | [@riannongg](https://github.com/riannongg) |
+| Samanyu Warhade | [@samanyuw](https://github.com/samanyuw) |
 
 ---
 
