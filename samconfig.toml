@@ -14,4 +14,14 @@ resolve_s3 = true
 s3_prefix = "ecoshift"
 region = "us-west-2"
 image_repositories = []
-parameter_overrides = "GridZone=US-NW-PACW GreenThresholdGCO2=250 MaxVcpusGreen=16 MaxVcpusDirty=0 BedrockModelId=anthropic.claude-sonnet-4-6 ReportEmail=adamle11488@gmail.com MockCarbon=0 VpcId=vpc-0742a38754f338a6d SubnetIds=subnet-0990d6c4af3083de0\\,subnet-039d9aa5bca7e8338\\,subnet-07ccef1b0abe33872\\,subnet-07c837c4a60af74e7"
+parameter_overrides = [
+  "GridZone=US-NW-PACW",
+  "GreenThresholdGCO2=250",
+  "MaxVcpusGreen=16",
+  "MaxVcpusDirty=0",
+  "BedrockModelId=anthropic.claude-sonnet-4-6",
+  "ReportEmail=adamle11488@gmail.com",
+  "MockCarbon=0",
+  "VpcId=vpc-0742a38754f338a6d",
+  "SubnetIds=subnet-0990d6c4af3083de0,subnet-039d9aa5bca7e8338,subnet-07ccef1b0abe33872,subnet-07c837c4a60af74e7"
+]
