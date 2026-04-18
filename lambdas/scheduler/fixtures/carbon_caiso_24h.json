@@ -1,0 +1,392 @@
+{
+  "zone": "US-CAL-CISO",
+  "units": "gCO2eq/kWh",
+  "resolution_minutes": 15,
+  "note": "Synthetic CAISO-style profile for hackathon demo (solar dip midday, evening fossil peak).",
+  "points": [
+    {
+      "time": "00:00",
+      "carbon_intensity_gco2_per_kwh": 313.3
+    },
+    {
+      "time": "00:15",
+      "carbon_intensity_gco2_per_kwh": 307.2
+    },
+    {
+      "time": "00:30",
+      "carbon_intensity_gco2_per_kwh": 300.3
+    },
+    {
+      "time": "00:45",
+      "carbon_intensity_gco2_per_kwh": 292.8
+    },
+    {
+      "time": "01:00",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "01:15",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "01:30",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "01:45",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "02:00",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "02:15",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "02:30",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "02:45",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "03:00",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "03:15",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "03:30",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "03:45",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "04:00",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "04:15",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "04:30",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "04:45",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "05:00",
+      "carbon_intensity_gco2_per_kwh": 285.0
+    },
+    {
+      "time": "05:15",
+      "carbon_intensity_gco2_per_kwh": 309.8
+    },
+    {
+      "time": "05:30",
+      "carbon_intensity_gco2_per_kwh": 334.0
+    },
+    {
+      "time": "05:45",
+      "carbon_intensity_gco2_per_kwh": 357.0
+    },
+    {
+      "time": "06:00",
+      "carbon_intensity_gco2_per_kwh": 378.3
+    },
+    {
+      "time": "06:15",
+      "carbon_intensity_gco2_per_kwh": 397.4
+    },
+    {
+      "time": "06:30",
+      "carbon_intensity_gco2_per_kwh": 413.9
+    },
+    {
+      "time": "06:45",
+      "carbon_intensity_gco2_per_kwh": 427.4
+    },
+    {
+      "time": "07:00",
+      "carbon_intensity_gco2_per_kwh": 437.6
+    },
+    {
+      "time": "07:15",
+      "carbon_intensity_gco2_per_kwh": 444.3
+    },
+    {
+      "time": "07:30",
+      "carbon_intensity_gco2_per_kwh": 447.5
+    },
+    {
+      "time": "07:45",
+      "carbon_intensity_gco2_per_kwh": 447.1
+    },
+    {
+      "time": "08:00",
+      "carbon_intensity_gco2_per_kwh": 443.3
+    },
+    {
+      "time": "08:15",
+      "carbon_intensity_gco2_per_kwh": 436.1
+    },
+    {
+      "time": "08:30",
+      "carbon_intensity_gco2_per_kwh": 425.9
+    },
+    {
+      "time": "08:45",
+      "carbon_intensity_gco2_per_kwh": 398.1
+    },
+    {
+      "time": "09:00",
+      "carbon_intensity_gco2_per_kwh": 368.1
+    },
+    {
+      "time": "09:15",
+      "carbon_intensity_gco2_per_kwh": 344.1
+    },
+    {
+      "time": "09:30",
+      "carbon_intensity_gco2_per_kwh": 318.8
+    },
+    {
+      "time": "09:45",
+      "carbon_intensity_gco2_per_kwh": 292.3
+    },
+    {
+      "time": "10:00",
+      "carbon_intensity_gco2_per_kwh": 265.0
+    },
+    {
+      "time": "10:15",
+      "carbon_intensity_gco2_per_kwh": 237.2
+    },
+    {
+      "time": "10:30",
+      "carbon_intensity_gco2_per_kwh": 209.4
+    },
+    {
+      "time": "10:45",
+      "carbon_intensity_gco2_per_kwh": 181.8
+    },
+    {
+      "time": "11:00",
+      "carbon_intensity_gco2_per_kwh": 154.8
+    },
+    {
+      "time": "11:15",
+      "carbon_intensity_gco2_per_kwh": 145.7
+    },
+    {
+      "time": "11:30",
+      "carbon_intensity_gco2_per_kwh": 137.8
+    },
+    {
+      "time": "11:45",
+      "carbon_intensity_gco2_per_kwh": 130.9
+    },
+    {
+      "time": "12:00",
+      "carbon_intensity_gco2_per_kwh": 125.3
+    },
+    {
+      "time": "12:15",
+      "carbon_intensity_gco2_per_kwh": 120.8
+    },
+    {
+      "time": "12:30",
+      "carbon_intensity_gco2_per_kwh": 117.6
+    },
+    {
+      "time": "12:45",
+      "carbon_intensity_gco2_per_kwh": 115.6
+    },
+    {
+      "time": "13:00",
+      "carbon_intensity_gco2_per_kwh": 115.0
+    },
+    {
+      "time": "13:15",
+      "carbon_intensity_gco2_per_kwh": 123.5
+    },
+    {
+      "time": "13:30",
+      "carbon_intensity_gco2_per_kwh": 132.9
+    },
+    {
+      "time": "13:45",
+      "carbon_intensity_gco2_per_kwh": 143.0
+    },
+    {
+      "time": "14:00",
+      "carbon_intensity_gco2_per_kwh": 153.5
+    },
+    {
+      "time": "14:15",
+      "carbon_intensity_gco2_per_kwh": 164.2
+    },
+    {
+      "time": "14:30",
+      "carbon_intensity_gco2_per_kwh": 174.7
+    },
+    {
+      "time": "14:45",
+      "carbon_intensity_gco2_per_kwh": 185.0
+    },
+    {
+      "time": "15:00",
+      "carbon_intensity_gco2_per_kwh": 194.8
+    },
+    {
+      "time": "15:15",
+      "carbon_intensity_gco2_per_kwh": 204.0
+    },
+    {
+      "time": "15:30",
+      "carbon_intensity_gco2_per_kwh": 212.7
+    },
+    {
+      "time": "15:45",
+      "carbon_intensity_gco2_per_kwh": 220.8
+    },
+    {
+      "time": "16:00",
+      "carbon_intensity_gco2_per_kwh": 228.3
+    },
+    {
+      "time": "16:15",
+      "carbon_intensity_gco2_per_kwh": 235.4
+    },
+    {
+      "time": "16:30",
+      "carbon_intensity_gco2_per_kwh": 242.2
+    },
+    {
+      "time": "16:45",
+      "carbon_intensity_gco2_per_kwh": 248.8
+    },
+    {
+      "time": "17:00",
+      "carbon_intensity_gco2_per_kwh": 255.5
+    },
+    {
+      "time": "17:15",
+      "carbon_intensity_gco2_per_kwh": 287.2
+    },
+    {
+      "time": "17:30",
+      "carbon_intensity_gco2_per_kwh": 318.6
+    },
+    {
+      "time": "17:45",
+      "carbon_intensity_gco2_per_kwh": 334.7
+    },
+    {
+      "time": "18:00",
+      "carbon_intensity_gco2_per_kwh": 350.0
+    },
+    {
+      "time": "18:15",
+      "carbon_intensity_gco2_per_kwh": 364.1
+    },
+    {
+      "time": "18:30",
+      "carbon_intensity_gco2_per_kwh": 376.9
+    },
+    {
+      "time": "18:45",
+      "carbon_intensity_gco2_per_kwh": 388.1
+    },
+    {
+      "time": "19:00",
+      "carbon_intensity_gco2_per_kwh": 397.6
+    },
+    {
+      "time": "19:15",
+      "carbon_intensity_gco2_per_kwh": 405.1
+    },
+    {
+      "time": "19:30",
+      "carbon_intensity_gco2_per_kwh": 410.6
+    },
+    {
+      "time": "19:45",
+      "carbon_intensity_gco2_per_kwh": 413.9
+    },
+    {
+      "time": "20:00",
+      "carbon_intensity_gco2_per_kwh": 415.0
+    },
+    {
+      "time": "20:15",
+      "carbon_intensity_gco2_per_kwh": 413.9
+    },
+    {
+      "time": "20:30",
+      "carbon_intensity_gco2_per_kwh": 410.6
+    },
+    {
+      "time": "20:45",
+      "carbon_intensity_gco2_per_kwh": 405.1
+    },
+    {
+      "time": "21:00",
+      "carbon_intensity_gco2_per_kwh": 397.6
+    },
+    {
+      "time": "21:15",
+      "carbon_intensity_gco2_per_kwh": 395.9
+    },
+    {
+      "time": "21:30",
+      "carbon_intensity_gco2_per_kwh": 392.2
+    },
+    {
+      "time": "21:45",
+      "carbon_intensity_gco2_per_kwh": 386.4
+    },
+    {
+      "time": "22:00",
+      "carbon_intensity_gco2_per_kwh": 378.3
+    },
+    {
+      "time": "22:15",
+      "carbon_intensity_gco2_per_kwh": 368.0
+    },
+    {
+      "time": "22:30",
+      "carbon_intensity_gco2_per_kwh": 355.6
+    },
+    {
+      "time": "22:45",
+      "carbon_intensity_gco2_per_kwh": 341.2
+    },
+    {
+      "time": "23:00",
+      "carbon_intensity_gco2_per_kwh": 325.0
+    },
+    {
+      "time": "23:15",
+      "carbon_intensity_gco2_per_kwh": 324.2
+    },
+    {
+      "time": "23:30",
+      "carbon_intensity_gco2_per_kwh": 322.0
+    },
+    {
+      "time": "23:45",
+      "carbon_intensity_gco2_per_kwh": 318.3
+    }
+  ]
+}

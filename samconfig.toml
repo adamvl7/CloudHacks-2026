@@ -1,0 +1,23 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "ecoshift"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+confirm_changeset = true
+resolve_s3 = true
+s3_prefix = "ecoshift"
+region = "us-west-2"
+image_repositories = []
+# On first deploy, run `sam deploy --guided` and you'll be prompted for:
+#   - GridZone            (e.g. US-CAL-CISO)
+#   - GreenThresholdGCO2  (default 250)
+#   - ReportEmail         (verified SES recipient)
+#   - VpcId               (default VPC is fine)
+#   - SubnetIds           (comma-separated public subnets in that VPC)
+#   - MockCarbon          (1 = use mock fixture, 0 = hit ElectricityMaps)
