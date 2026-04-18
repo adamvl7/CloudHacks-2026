@@ -9,6 +9,8 @@ if (-not $Env:AWS_ACCESS_KEY_ID) {
     exit 1
 }
 
+$Env:PATH = "C:\Program Files\Amazon\AWSCLIV2;C:\Program Files\Amazon\AWSSAMCLI\bin;$Env:PATH"
+
 Set-Location "C:\Users\adaml\CloudHacks 2026\CloudHacks-2026"
 
 Write-Host "==> sam build" -ForegroundColor Cyan
