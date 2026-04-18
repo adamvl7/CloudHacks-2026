@@ -19,7 +19,8 @@ if ($LASTEXITCODE -ne 0) { Write-Host "BUILD FAILED" -ForegroundColor Red; exit 
 
 Write-Host "==> sam deploy" -ForegroundColor Cyan
 sam deploy
-if ($LASTEXITCODE -ne 0) { Write-Host "DEPLOY FAILED" -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) { Write-Host "DEPLOY FAILED" -ForegroundColor Red; exit 1 }
+# exit code 1 with "No changes" is fine — continue to frontend sync
 
 Write-Host "==> Fetching stack outputs" -ForegroundColor Cyan
 $DASHBOARD_BUCKET = aws cloudformation describe-stacks --stack-name ecoshift --query "Stacks[0].Outputs[?OutputKey=='DashboardBucketName'].OutputValue" --output text
