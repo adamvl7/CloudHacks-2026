@@ -4,8 +4,10 @@ const AVG_WATTS_PER_VCPU = 8
 const TICK_HOURS = 0.25
 
 function fmt(n) {
+  if (n == null || Number.isNaN(n)) return '—'
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  if (n >= 10_000) return `${(n / 1000).toFixed(1)}k`
+  if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
   return `${Math.round(n)}`
 }
 
@@ -18,8 +20,6 @@ export default function SavingsCard({ decisions, summary }) {
     const runVcpuHours = green.reduce((s, d) => s + Number(d.batch_target_vcpus || 0), 0) * TICK_HOURS
     const counterfactualVcpus = Math.max(...green.map(d => Number(d.batch_target_vcpus || 0)), 0)
     const counterfactualVcpuHours = counterfactualVcpus * decisions.length * TICK_HOURS
-    const energyActualKwh = green.reduce((s, d) =>
-      s + Number(d.batch_target_vcpus || 0) * TICK_HOURS * AVG_WATTS_PER_VCPU / 1000, 0)
     const gco2Actual = green.reduce((s, d) =>
       s + Number(d.batch_target_vcpus || 0) * TICK_HOURS * AVG_WATTS_PER_VCPU / 1000 * Number(d.carbon_intensity), 0)
     const gco2Counterfactual = counterfactualVcpuHours * AVG_WATTS_PER_VCPU / 1000 * avg
@@ -28,30 +28,41 @@ export default function SavingsCard({ decisions, summary }) {
     return { gco2Avoided, miles, runVcpuHours, avg }
   }, [decisions])
 
-  const src = summary?.metrics || live
-  if (!src) return <div className="loader">no data yet</div>
+  const m = summary?.metrics || {}
+  const avoided = m.gco2_avoided ?? live?.gco2Avoided
+  const miles = live?.miles ?? (m.gco2_avoided ? m.gco2_avoided / 404 : null)
+  const avg = m.avg_intensity_gco2_per_kwh ?? live?.avg
+  const ranVcpuHours = m.vcpu_hours_run ?? live?.runVcpuHours
 
-  const avoided = summary?.metrics?.gco2_avoided ?? live?.gco2Avoided ?? 0
-  const equiv = summary?.metrics?.real_world_equivalent
-    ?? (live ? `≈ ${live.miles.toFixed(1)} miles not driven` : '')
-  const avg = summary?.metrics?.avg_intensity_gco2_per_kwh ?? live?.avg ?? 0
-  const ranVcpuHours = summary?.metrics?.vcpu_hours_run ?? live?.runVcpuHours ?? 0
+  if (avoided == null) {
+    return (
+      <>
+        <h3>CO₂ avoided (last 24h)</h3>
+        <div className="loader">collecting 24h of decisions…</div>
+      </>
+    )
+  }
 
   return (
-    <div>
+    <>
       <h3>CO₂ avoided (last 24h)</h3>
-      <div className="metric">{fmt(avoided)} <span style={{ fontSize: 16, color: 'var(--text-dim)' }}>g</span></div>
-      <div className="subtle">{equiv}</div>
-      <div style={{ marginTop: 14, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-        <div>
-          <div className="subtle" style={{ fontSize: 11 }}>Avg intensity</div>
-          <div style={{ fontWeight: 600 }}>{Math.round(avg)} gCO₂/kWh</div>
-        </div>
-        <div>
-          <div className="subtle" style={{ fontSize: 11 }}>vCPU·hours run</div>
-          <div style={{ fontWeight: 600 }}>{ranVcpuHours.toFixed ? ranVcpuHours.toFixed(1) : ranVcpuHours}</div>
-        </div>
+      <div className="savings-headline">
+        <div className="metric">{fmt(avoided)}</div>
+        <div className="metric-unit">grams</div>
       </div>
-    </div>
+      {miles != null && (
+        <div className="subtle">≈ <strong>{miles.toFixed(1)}</strong> miles not driven (avg passenger car)</div>
+      )}
+      <dl className="savings-detail">
+        <div>
+          <dt>Avg intensity</dt>
+          <dd>{Math.round(avg)} <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>g/kWh</span></dd>
+        </div>
+        <div>
+          <dt>vCPU · hours run</dt>
+          <dd>{ranVcpuHours?.toFixed ? ranVcpuHours.toFixed(1) : ranVcpuHours}</dd>
+        </div>
+      </dl>
+    </>
   )
 }
