@@ -140,6 +140,12 @@ body[data-state='dirty'] .live-dot { background: var(--red); }
 
 .grid .wide { grid-column: span 2; }
 .grid .full { grid-column: 1 / -1; }
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.card-stack .card { flex: 1; }
 
 @media (max-width: 960px) {
   .grid { grid-template-columns: 1fr 1fr; }

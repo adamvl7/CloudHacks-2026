@@ -131,33 +131,35 @@ export default function App() {
           </div>
         </div>
 
-        <div className="card">
-          <h3>Decision counts (last 24h)</h3>
-          <dl className="counts">
-            <div>
-              <dt>Green</dt>
-              <div className="num green">{counts.green}</div>
-            </div>
-            <div>
-              <dt>Dirty</dt>
-              <div className="num red">{counts.dirty}</div>
-            </div>
-            <div>
-              <dt>Clean share</dt>
-              <div className="num">{counts.total > 0 ? `${Math.round((counts.green / counts.total) * 100)}%` : '—'}</div>
-            </div>
-          </dl>
-          {counts.total > 0 && (
-            <div className="split-track">
-              <div className="split-green" style={{ width: `${(counts.green / counts.total) * 100}%` }} />
-              <div className="split-dirty" style={{ width: `${(counts.dirty / counts.total) * 100}%` }} />
-            </div>
-          )}
-        </div>
+        <div className="card-stack">
+          <div className="card">
+            <h3>Decision counts (last 24h)</h3>
+            <dl className="counts">
+              <div>
+                <dt>Green</dt>
+                <div className="num green">{counts.green}</div>
+              </div>
+              <div>
+                <dt>Dirty</dt>
+                <div className="num red">{counts.dirty}</div>
+              </div>
+              <div>
+                <dt>Clean share</dt>
+                <div className="num">{counts.total > 0 ? `${Math.round((counts.green / counts.total) * 100)}%` : '—'}</div>
+              </div>
+            </dl>
+            {counts.total > 0 && (
+              <div className="split-track">
+                <div className="split-green" style={{ width: `${(counts.green / counts.total) * 100}%` }} />
+                <div className="split-dirty" style={{ width: `${(counts.dirty / counts.total) * 100}%` }} />
+              </div>
+            )}
+          </div>
 
-        <div className="card">
-          <h3>Energy mix · {zone}</h3>
-          <PowerBreakdown data={powerBreakdown} />
+          <div className="card">
+            <h3>Energy mix · {zone}</h3>
+            <PowerBreakdown data={powerBreakdown} />
+          </div>
         </div>
 
         <div className="card full">
