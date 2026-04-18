@@ -1,4 +1,4 @@
-"""EcoShift scheduler Lambda — fires every 15 min.
+"""EcoShift scheduler Lambda — fires every 1 minute, samples at 0s and 30s for 30-second resolution.
 
 Flow: fetch grid carbon intensity -> compare to threshold -> scale Batch up or down
       -> log decision to DynamoDB.
@@ -49,7 +49,7 @@ def _record_decision(intensity: float, action: str, source: str, batch_result: d
     })
 
 
-def lambda_handler(event, context):
+def _tick() -> dict:
     intensity, source = fetch_current_intensity(GRID_ZONE, DYNAMO_TABLE)
 
     if intensity <= THRESHOLD:
@@ -68,19 +68,29 @@ def lambda_handler(event, context):
     _record_decision(intensity, action, source, batch_result)
 
     return {
+        "intensity_gco2_per_kwh": intensity,
+        "threshold": THRESHOLD,
+        "action": action,
+        "source": source,
+        "batch": batch_result,
+    }
+
+
+def lambda_handler(event, context):
+    # First sample immediately
+    result_1 = _tick()
+
+    # Second sample at 30s — gives 30-second data resolution within the 1-minute schedule
+    time.sleep(30)
+    result_2 = _tick()
+
+    return {
         "statusCode": 200,
-        "body": json.dumps({
-            "intensity_gco2_per_kwh": intensity,
-            "threshold": THRESHOLD,
-            "action": action,
-            "source": source,
-            "batch": batch_result,
-        }),
+        "body": json.dumps({"tick_1": result_1, "tick_2": result_2}),
     }
 
 
 if __name__ == "__main__":
-    # Local smoke test: ECOSHIFT_MOCK_CARBON=1 python handler.py
     os.environ.setdefault("MOCK_CARBON", "1")
     logging.basicConfig(level=logging.INFO)
     print(lambda_handler({}, None))

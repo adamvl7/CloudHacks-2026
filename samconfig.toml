@@ -9,15 +9,9 @@ parallel = true
 
 [default.deploy.parameters]
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
-confirm_changeset = true
+confirm_changeset = false
 resolve_s3 = true
 s3_prefix = "ecoshift"
 region = "us-west-2"
 image_repositories = []
-# On first deploy, run `sam deploy --guided` and you'll be prompted for:
-#   - GridZone            (e.g. US-CAL-CISO)
-#   - GreenThresholdGCO2  (default 250)
-#   - ReportEmail         (verified SES recipient)
-#   - VpcId               (default VPC is fine)
-#   - SubnetIds           (comma-separated public subnets in that VPC)
-#   - MockCarbon          (1 = use mock fixture, 0 = hit ElectricityMaps)
+parameter_overrides = "GridZone=US-NW-PACW GreenThresholdGCO2=250 MaxVcpusGreen=16 MaxVcpusDirty=0 BedrockModelId=anthropic.claude-sonnet-4-6 ReportEmail=adamle11488@gmail.com MockCarbon=0 VpcId=vpc-0742a38754f338a6d SubnetIds=subnet-0990d6c4af3083de0\\,subnet-039d9aa5bca7e8338\\,subnet-07ccef1b0abe33872\\,subnet-07c837c4a60af74e7"

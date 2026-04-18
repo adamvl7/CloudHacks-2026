@@ -245,6 +245,7 @@ Resources:
       FunctionName: ecoshift-scheduler
       CodeUri: lambdas/scheduler/
       Handler: handler.lambda_handler
+      Timeout: 70
       Environment:
         Variables:
           GRID_ZONE: !Ref GridZone
@@ -267,11 +268,11 @@ Resources:
               Action: secretsmanager:GetSecretValue
               Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:ecoshift/electricitymaps-api-key-*
       Events:
-        EveryFifteenMinutes:
+        EveryMinute:
           Type: ScheduleV2
           Properties:
-            ScheduleExpression: rate(15 minutes)
-            Description: EcoShift decision tick - re-evaluates grid carbon intensity
+            ScheduleExpression: rate(1 minute)
+            Description: EcoShift decision tick - runs twice per invocation for 30s resolution
 
   # ---------------- Reporter Lambda ----------------
   ReporterFunction:
