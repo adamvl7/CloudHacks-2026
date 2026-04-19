@@ -1,4 +1,4 @@
-# ecoshift-backend summary
+# nimbus-backend summary
 
 ## Files changed
 - `lambdas/chat/handler.py` (new) — Bedrock-grounded Q&A Lambda

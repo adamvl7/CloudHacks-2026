@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Submit a sample AWS Batch job to the EcoShift-managed queue.
-# Jobs only execute when EcoShift has scaled the compute env up (green grid).
+# Submit a sample AWS Batch job to the Nimbus-managed queue.
+# Jobs only execute when Nimbus has scaled the compute env up (green grid).
 set -euo pipefail
 
 STACK_NAME="${STACK_NAME:-ecoshift}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# EcoShift one-shot deploy: SAM stack + frontend build + S3 sync + CloudFront invalidation.
+# Nimbus one-shot deploy: SAM stack + frontend build + S3 sync + CloudFront invalidation.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

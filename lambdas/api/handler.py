@@ -1,4 +1,4 @@
-"""Read-only HTTP API backing the EcoShift dashboard.
+"""Read-only HTTP API backing the Nimbus dashboard.
 
 Routes:
   GET /decisions?hours=24      -> list of decision records

@@ -1,4 +1,4 @@
-"""EcoShift reporter Lambda.
+"""Nimbus reporter Lambda.
 
 Scheduled reports run at 00:00 UTC and summarize the previous full UTC day.
 Manual dashboard reports summarize the rolling previous 24 hours.

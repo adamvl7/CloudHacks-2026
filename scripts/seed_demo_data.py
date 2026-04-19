@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed EcoShift with demo data and/or flip the live demo scenario.
+"""Seed Nimbus with demo data and/or flip the live demo scenario.
 
 Usage:
     # Populate the last 24h of decision history (uses the synthetic fixture):

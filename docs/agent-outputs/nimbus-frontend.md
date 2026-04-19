@@ -1,4 +1,4 @@
-# EcoShift Frontend Redesign — Agent Output
+# Nimbus Frontend Redesign — Agent Output
 
 **Date:** 2026-04-18  
 **Pass/fail build:** Could not execute (Bash `npm` permission not granted). Run `cd frontend && npm run build` to verify.
@@ -19,7 +19,7 @@
 - `frontend/src/components/TimelineChart.jsx` — SVG (900×220 viewBox), dirty-period shading, grid lines, area gradient, threshold dashed line, main line, hover crosshair + fixed tooltip
 - `frontend/src/components/BatchStateCard.jsx` — Running/Paused with glow dot, vCPU count, last-check time, job tags
 - `frontend/src/components/DecisionCounts.jsx` — Green / Dirty / Clean share + thin 4px progress bar
-- `frontend/src/components/AskEcoShift.jsx` — Floating chat FAB (bottom-right), 320×420 panel with suggestions, local message state
+- `frontend/src/components/AskNimbus.jsx` — Floating chat FAB (bottom-right), 320×420 panel with suggestions, local message state
 
 ## Design decisions
 
@@ -29,8 +29,8 @@
 - TweaksPanel offers forest/ocean/earth color scheme switcher + arc/ring/bar gauge style — toggled by a toolbar button in the page header
 - SettingsPage has company theme selector (AWS / Google / Forest), zone input, threshold slider, refresh interval, email, save + toast
 - `ForecastStrip`, `RegionCompareBanner` kept as-is and mounted in Overview + Timeline pages
-- `ecoshiftClient.js` not changed
+- `nimbusClient.js` not changed
 - No new npm packages
 
 ## Previous run notes preserved
-The previous run added `RegionCompareBanner`, `ForecastStrip`, and `AskEcoShift` mounts; this run supersedes that with a full redesign that incorporates all of those plus the new components above.
+The previous run added `RegionCompareBanner`, `ForecastStrip`, and `AskNimbus` mounts; this run supersedes that with a full redesign that incorporates all of those plus the new components above.

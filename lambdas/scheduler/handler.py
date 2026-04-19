@@ -1,4 +1,4 @@
-"""EcoShift scheduler Lambda — fires every 1 minute, samples at 0s and 30s for 30-second resolution.
+"""Nimbus scheduler Lambda — fires every 1 minute, samples at 0s and 30s for 30-second resolution.
 
 Flow: fetch grid carbon intensity -> compare to threshold -> scale Batch up or down
       -> log decision to DynamoDB.

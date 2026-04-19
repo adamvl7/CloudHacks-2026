@@ -1,4 +1,4 @@
-# EcoShift Workload Scheduler
+# Nimbus Workload Scheduler
 
 Carbon-aware serverless auto-scaler for AWS Batch. Cloud Hacks 2026 — AI Environmental Impact track.
 
@@ -6,13 +6,13 @@ Carbon-aware serverless auto-scaler for AWS Batch. Cloud Hacks 2026 — AI Envir
 
 | Path | Owner | Purpose |
 |---|---|---|
-| `lambdas/scheduler/` | ecoshift-backend | Decision engine (every 15 min). ElectricityMaps → Batch scale up/down. |
-| `lambdas/reporter/`  | ecoshift-backend | Daily Bedrock narrative + SES email. |
-| `lambdas/api/`       | ecoshift-backend | Read-only HTTP API behind API Gateway. |
-| `frontend/src/`      | ecoshift-frontend | React + Vite dashboard. |
-| `frontend/src/components/` | ecoshift-frontend | GridMeter, SavingsCard, DecisionTimeline, PowerBreakdown, DailySummary. |
-| `frontend/src/api/ecoshiftClient.js` | ecoshift-frontend | Axios client for `/current`, `/decisions`, `/summary/latest`, `/power-breakdown`. |
-| `template.yaml`      | ecoshift-backend | AWS SAM infrastructure (Lambda, DynamoDB, API GW, IAM). |
+| `lambdas/scheduler/` | nimbus-backend | Decision engine (every 15 min). ElectricityMaps → Batch scale up/down. |
+| `lambdas/reporter/`  | nimbus-backend | Daily Bedrock narrative + SES email. |
+| `lambdas/api/`       | nimbus-backend | Read-only HTTP API behind API Gateway. |
+| `frontend/src/`      | nimbus-frontend | React + Vite dashboard. |
+| `frontend/src/components/` | nimbus-frontend | GridMeter, SavingsCard, DecisionTimeline, PowerBreakdown, DailySummary. |
+| `frontend/src/api/nimbusClient.js` | nimbus-frontend | Axios client for `/current`, `/decisions`, `/summary/latest`, `/power-breakdown`. |
+| `template.yaml`      | nimbus-backend | AWS SAM infrastructure (Lambda, DynamoDB, API GW, IAM). |
 | `scripts/`           | shared | Demo seed + deploy helpers. |
 
 ## DynamoDB schema
@@ -45,9 +45,9 @@ No test suite yet — verify by building the frontend and py_compiling touched L
 
 ## Boundaries
 
-- **ecoshift-frontend**: `frontend/**` only.
-- **ecoshift-backend**: `lambdas/**`, `template.yaml`, `samconfig.toml`, `scripts/**`.
-- **ecoshift-reviewer**: read-only across the repo; runs the verification commands; posts findings to `docs/agent-outputs/ecoshift-reviewer.md`.
+- **nimbus-frontend**: `frontend/**` only.
+- **nimbus-backend**: `lambdas/**`, `template.yaml`, `samconfig.toml`, `scripts/**`.
+- **nimbus-reviewer**: read-only across the repo; runs the verification commands; posts findings to `docs/agent-outputs/nimbus-reviewer.md`.
 
 ## Demo-first mindset
 

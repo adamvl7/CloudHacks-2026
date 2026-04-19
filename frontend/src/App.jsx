@@ -16,7 +16,7 @@ import {
   getPowerBreakdown,
   getForecast,
   getRegionCompare,
-} from './api/ecoshiftClient.js'
+} from './api/nimbusClient.js'
 
 /* ─── Color schemes ─── */
 const SCHEMES = {
@@ -136,7 +136,7 @@ function CloudLogo({ size = 34 }) {
 /* ─── helper ─── */
 const REFRESH_MS = 30_000
 const DEFAULT_REGION = 'us-west-2'
-const REGION_STORAGE_KEY = 'ecoshift:selected-region'
+const REGION_STORAGE_KEY = 'nimbus:selected-region'
 const FALLBACK_REGION_OPTIONS = [
   { region: 'us-east-1', name: 'N. Virginia', label: 'us-east-1 - N. Virginia', zone: 'US-MIDA-PJM', threshold: 350 },
   { region: 'us-east-2', name: 'Ohio', label: 'us-east-2 - Ohio', zone: 'US-MIDW-MISO', threshold: 380 },

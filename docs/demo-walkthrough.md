@@ -1,4 +1,4 @@
-# EcoShift demo walkthrough
+# Nimbus demo walkthrough
 
 A practiced 3-minute run that shows the carbon-aware loop flipping between green and dirty, AWS Batch scaling in response, and Bedrock narrating the impact.
 
@@ -23,7 +23,7 @@ Then open the dashboard URL printed by the deploy script. Leave it on-screen.
 
 ## Live demo (≈ 3 minutes)
 
-**0:00 — Framing (15s).** "Data centres are 1–2% of global electricity, and growing. But grids aren't uniformly dirty — California at noon is 60% solar; at 2am it's mostly gas. EcoShift is a carbon-aware scheduler that shifts non-urgent compute to clean-energy windows automatically."
+**0:00 — Framing (15s).** "Data centres are 1–2% of global electricity, and growing. But grids aren't uniformly dirty — California at noon is 60% solar; at 2am it's mostly gas. Nimbus is a carbon-aware scheduler that shifts non-urgent compute to clean-energy windows automatically."
 
 **0:15 — Show the dashboard (30s).** Gesture to the meter: "We're at 165 gCO₂/kWh. Green. Batch is running at 16 vCPUs. This timeline is the last 24 hours — you can see the midday solar dip and the evening peak when California fires up gas plants."
 

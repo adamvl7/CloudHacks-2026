@@ -1,8 +1,8 @@
-# ecoshift-reviewer — verdict
+# nimbus-reviewer — verdict
 
 ## Contract match
 
-- [x] `POST /chat` — frontend `postChat` sends `{ question, hours }` (ecoshiftClient.js:37) and reads `{ answer, grounding:{ decisions_used, zone } }`. Backend handler returns exactly that envelope (chat/handler.py:202-208), validates question (400) and clamps hours 1–168. MATCH.
+- [x] `POST /chat` — frontend `postChat` sends `{ question, hours }` (nimbusClient.js:37) and reads `{ answer, grounding:{ decisions_used, zone } }`. Backend handler returns exactly that envelope (chat/handler.py:202-208), validates question (400) and clamps hours 1–168. MATCH.
 - [x] `GET /forecast` — backend returns `{ zone, threshold, forecast:[{ datetime, carbonIntensity }] }` (api/handler.py:67-77). Consumer `ForecastStrip` reads `data.threshold`, `data.forecast[].datetime`, `.carbonIntensity` (ForecastStrip.jsx:25-27, 52-57). MATCH.
 - [x] `GET /region-compare` — backend returns `{ current_zone, regions:[{ zone, carbonIntensity, label }] }` (api/handler.py:80-96). `RegionCompareBanner` keys off `data.current_zone`, `regions[].zone`, `.carbonIntensity`, `.label` (RegionCompareBanner.jsx:5-25). MATCH.
 

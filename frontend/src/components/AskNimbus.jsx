@@ -6,7 +6,7 @@ const SUGGESTIONS = [
   'How much CO₂ have we saved today?',
 ]
 
-export default function AskEcoShift() {
+export default function AskNimbus() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')

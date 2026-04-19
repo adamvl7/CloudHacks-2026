@@ -42,7 +42,7 @@ This is a massive, invisible source of avoidable carbon emissions.
 
 ## 💡 The Solution
 
-**EcoShift** is a drop-in scheduler that makes any AWS Batch workload **carbon-aware**. It:
+**Nimbus** is a drop-in scheduler that makes any AWS Batch workload **carbon-aware**. It:
 
 1. 🔍 **Monitors** the real-time carbon intensity of the AWS region's local power grid (via ElectricityMaps API).
 2. ⚖️ **Decides** whether now is a "green" moment (low gCO₂/kWh) or a "dirty" moment (high gCO₂/kWh) using a configurable threshold.
@@ -149,7 +149,7 @@ End of day (cron at 23:55 UTC):
 I considered four options: **EC2 Auto Scaling Groups, ECS/Fargate, AWS Batch, and Lambda throttling.** AWS Batch wins decisively for this project, here's why:
 
 1. **Purpose-built for time-flexible workloads.** Batch is explicitly designed for jobs that *don't need to run instantly* — exactly the workloads where carbon-shifting makes sense. Interactive services (web apps, APIs) can't be paused mid-request. Batch jobs can.
-2. **Native job queuing.** When EcoShift scales the compute environment to zero, Batch doesn't lose work — it *queues* jobs and dispatches them the moment capacity returns. This means "pausing dirty-hour work" is a natural primitive, not a hack.
+2. **Native job queuing.** When Nimbus scales the compute environment to zero, Batch doesn't lose work — it *queues* jobs and dispatches them the moment capacity returns. This means "pausing dirty-hour work" is a natural primitive, not a hack.
 3. **Real hackathon-sellable narrative.** Batch is how ML training, scientific simulations, genomics, and financial risk modelling actually run on AWS. Judges will immediately recognize this as a real industry use case.
 4. **Clean scaling API.** `update-compute-environment` with a new `desiredvCpus` is a single idempotent API call. Much simpler than wrangling ASG cooldowns or ECS service deployments.
 5. **ECS/Fargate would be overkill.** Those are for long-running services, not time-flexible jobs.
@@ -176,7 +176,7 @@ Newer, supports timezones natively (critical for "end of day" logic), and has a 
 ## 📁 Repository Structure
 
 ```
-ecoshift/
+nimbus/
 ├── README.md
 ├── template.yaml                      ← AWS SAM infrastructure definition
 ├── samconfig.toml                     ← SAM deploy config
@@ -202,7 +202,7 @@ ecoshift/
 │   │   │   ├── DecisionTimeline.jsx   ← scale-up/down history chart
 │   │   │   ├── SavingsCard.jsx        ← headline numbers
 │   │   │   └── DailySummary.jsx       ← Bedrock narrative display
-│   │   └── api/ecoshiftClient.js      ← calls API Gateway endpoints
+│   │   └── api/nimbusClient.js        ← calls API Gateway endpoints
 │   ├── package.json
 │   └── vite.config.js
 │
@@ -231,8 +231,8 @@ ecoshift/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<your-org>/ecoshift.git
-cd ecoshift
+git clone https://github.com/<your-org>/nimbus.git
+cd nimbus
 
 # Install Lambda dependencies
 pip install -r lambdas/scheduler/requirements.txt -t lambdas/scheduler/
@@ -293,7 +293,7 @@ Configuration is managed via SAM parameters (set at deploy time) and Lambda envi
 
 ## ▶️ Running the Project
 
-Once deployed, EcoShift runs autonomously. To exercise it:
+Once deployed, Nimbus runs autonomously. To exercise it:
 
 ### Submit a test batch job
 
@@ -301,7 +301,7 @@ Once deployed, EcoShift runs autonomously. To exercise it:
 ./scripts/submit_test_batch_job.sh
 ```
 
-This queues a job that will execute *only when EcoShift has scaled the compute env up* — i.e., only during green grid periods.
+This queues a job that will execute *only when Nimbus has scaled the compute env up* — i.e., only during green grid periods.
 
 ### View the dashboard
 
@@ -382,14 +382,14 @@ gco2_avoided = gco2_counterfactual - gco2_actual
 
 `avg_watts_per_vcpu` is set to **8W** by default, based on published AWS sustainability disclosures for general-purpose compute. Configurable per instance type.
 
-The key insight: **EcoShift doesn't reduce total energy use — it shifts *when* that energy is consumed to moments when the grid is already greener.** The counterfactual is "what would have happened if we ran the same jobs on a flat 24h schedule."
+The key insight: **Nimbus doesn't reduce total energy use — it shifts *when* that energy is consumed to moments when the grid is already greener.** The counterfactual is "what would have happened if we ran the same jobs on a flat 24h schedule."
 
 ---
 
 ## 🔮 Future Work
 
 - **Multi-region shifting.** Instead of only shifting in *time*, also shift in *space* — route jobs to whichever AWS region currently has the cleanest grid.
-- **Per-job SLA awareness.** Let users tag jobs with deadlines; EcoShift respects the deadline while still optimizing for clean energy windows.
+- **Per-job SLA awareness.** Let users tag jobs with deadlines; Nimbus respects the deadline while still optimizing for clean energy windows.
 - **Forecast-based scheduling.** ElectricityMaps offers 24h forecasts — use them to pre-position work rather than react reactively.
 - **Cost–carbon Pareto optimization.** Sometimes spot pricing and clean energy windows don't align; let users weight the tradeoff.
 - **Integration with Amazon SageMaker training jobs.** Native hook for ML training workloads specifically.

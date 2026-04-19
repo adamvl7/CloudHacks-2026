@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local mock API server for EcoShift dashboard development.
+"""Local mock API server for Nimbus dashboard development.
 
 Serves /current, /decisions, and /summary/latest with synthetic data
 so the React dashboard can be fully exercised without deploying to AWS.
@@ -20,11 +20,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 THRESHOLD = 250
 MAX_VCPUS = 16
 
-NARRATIVE = """Today, EcoShift managed compute scheduling across a 24-hour window for the US-CAL-CISO grid zone, executing 27 scale-up events during green energy windows and 69 scale-down events during high-carbon periods. In total, 108 vCPU-hours of work were completed exclusively while grid carbon intensity fell below the 250 gCO\u2082eq/kWh threshold, with all non-urgent jobs held in the AWS Batch queue during the 9.75 dirty hours.
+NARRATIVE = """Today, Nimbus managed compute scheduling across a 24-hour window for the US-CAL-CISO grid zone, executing 27 scale-up events during green energy windows and 69 scale-down events during high-carbon periods. In total, 108 vCPU-hours of work were completed exclusively while grid carbon intensity fell below the 250 gCO\u2082eq/kWh threshold, with all non-urgent jobs held in the AWS Batch queue during the 9.75 dirty hours.
 
 From an environmental perspective, this approach avoided an estimated 742 grams of CO\u2082 equivalent compared to a flat-schedule baseline\u2014roughly equivalent to not driving 1.8 miles in an average gasoline car. The average grid intensity observed was 285.8 gCO\u2082/kWh, with the cleanest window recorded at midday (115 gCO\u2082/kWh) as California solar generation peaked, and the highest intensity at 19:30 UTC (415 gCO\u2082/kWh) during the evening gas-plant ramp.
 
-On cost impact, deferred compute during dirty windows avoided approximately $11.17 in Fargate charges that would have run at full capacity around the clock. Looking ahead to tomorrow, the CAISO forecast suggests a similar solar profile; EcoShift will pre-position the compute environment to scale up ahead of the midday clean window. No action is required from engineering teams\u2014jobs will resume automatically when the grid is green."""
+On cost impact, deferred compute during dirty windows avoided approximately $11.17 in Fargate charges that would have run at full capacity around the clock. Looking ahead to tomorrow, the CAISO forecast suggests a similar solar profile; Nimbus will pre-position the compute environment to scale up ahead of the midday clean window. No action is required from engineering teams\u2014jobs will resume automatically when the grid is green."""
 
 
 def _synthetic_decisions(hours: int = 24, scenario: str = "normal") -> list[dict]:
@@ -169,7 +169,7 @@ def main():
     SCENARIO = args.scenario
 
     server = HTTPServer(("localhost", args.port), Handler)
-    print(f"EcoShift mock API running at http://localhost:{args.port}")
+    print(f"Nimbus mock API running at http://localhost:{args.port}")
     print(f"Scenario: {SCENARIO}  (intensity: {'~150 gCO2/kWh' if SCENARIO=='green' else '~420 gCO2/kWh' if SCENARIO=='dirty' else 'CAISO 24h cycle'})")
     print("Press Ctrl+C to stop.")
     try:

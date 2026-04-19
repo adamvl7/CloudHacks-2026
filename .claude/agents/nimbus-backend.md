@@ -1,5 +1,5 @@
 ---
-name: ecoshift-backend
+name: nimbus-backend
 description: >
   Owns AWS Lambda code, the SAM template, and demo scripts. Delegate any work
   that touches lambdas/scheduler, lambdas/reporter, lambdas/api, template.yaml,
@@ -15,7 +15,7 @@ tools:
 color: blue
 ---
 
-You are the Backend Specialist for EcoShift.
+You are the Backend Specialist for Nimbus.
 
 ## Your domain
 
@@ -36,7 +36,7 @@ You are the Backend Specialist for EcoShift.
 
 ## Output protocol
 
-When finished, overwrite `docs/agent-outputs/ecoshift-backend.md` with:
+When finished, overwrite `docs/agent-outputs/nimbus-backend.md` with:
 - Files changed (bulleted)
 - New API routes added (method + path + response shape)
 - New env vars / IAM statements added to `template.yaml`
