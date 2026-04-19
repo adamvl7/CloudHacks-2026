@@ -126,6 +126,14 @@ body {
   display: flex;
   flex-direction: column;
 }
+.sidebar-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-brand-row svg {
+  margin-top: -4px;
+}
 
 /* nav */
 .sidebar-nav {

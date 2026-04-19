@@ -122,7 +122,7 @@ const NAV_ITEMS = [
 ]
 
 /* ─── CloudLogo ─── */
-function CloudLogo({ size = 36 }) {
+function CloudLogo({ size = 34 }) {
   return (
     <svg width={size} height={size * 0.72} viewBox="0 0 50 36" fill="var(--sidebar-accent)">
       <circle cx="33" cy="14" r="11" />
@@ -662,7 +662,10 @@ export default function App() {
             <CloudLogo size={42} />
           ) : (
             <div className="sidebar-brand-col">
-              <div className="brand-name">Nimbus</div>
+              <div className="sidebar-brand-row">
+                <div className="brand-name">Nimbus</div>
+                <CloudLogo size={34} />
+              </div>
               <div className="brand-sub">Carbon-aware scheduler</div>
             </div>
           )}

@@ -46,8 +46,8 @@ export default function AskEcoShift() {
           fontSize: 22, zIndex: 300,
           transition: 'transform 0.15s',
         }}
-        aria-label="Ask EcoShift"
-        title="Ask EcoShift"
+        aria-label="Ask Nimbus"
+        title="Ask Nimbus"
       >
         {open ? '×' : '💬'}
       </button>
@@ -68,7 +68,7 @@ export default function AskEcoShift() {
             fontWeight: 600, fontSize: 14, color: 'var(--text)',
             background: 'var(--primary-light)',
           }}>
-            Ask EcoShift
+            Ask Nimbus
           </div>
 
           {/* messages */}
