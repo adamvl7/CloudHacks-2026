@@ -282,6 +282,7 @@ function OverviewPage({ data }) {
 
 function TimelinePage({ data }) {
   const { decisions, timelineData, threshold, zone, selectedRegionOption } = data
+  const [expandedIdx, setExpandedIdx] = useState(null)
   const green = decisions.filter(d => d.action === 'scale_up').length
   const dirty = decisions.filter(d => d.action === 'scale_down').length
   const total = green + dirty
@@ -347,29 +348,60 @@ function TimelinePage({ data }) {
                   const intVal = Number(d.carbon_intensity)
                   const isUp = d.action === 'scale_up'
                   const isGreen = Number.isFinite(intVal) && intVal <= threshold
+                  const isOpen = expandedIdx === i
+                  const rowThreshold = Number.isFinite(Number(d.threshold)) ? Number(d.threshold) : threshold
+                  const source = d.source || 'electricitymaps'
+                  const rowZone = d.zone || zone
+                  const fullTs = d.sk ? new Date(d.sk).toLocaleString() : '—'
+                  const reasoning = Number.isFinite(intVal)
+                    ? `intensity ${Math.round(intVal)}g ${isGreen ? '≤' : '>'} threshold ${Math.round(rowThreshold)}g → ${isUp ? 'scale_up' : 'scale_down'}`
+                    : 'insufficient data'
                   return (
-                    <tr key={i}>
-                      <td style={{ fontFamily: 'DM Mono, monospace', fontSize: 12 }}>{t}</td>
-                      <td style={{ fontFamily: 'DM Mono, monospace' }}>
-                        <span style={{ color: isGreen ? 'var(--green)' : intVal > 400 ? 'var(--red)' : 'var(--amber)' }}>
-                          {Number.isFinite(intVal) ? Math.round(intVal) : '—'}
-                        </span>
-                        <span style={{ color: 'var(--text3)', fontSize: 11 }}> g</span>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: 12, color: isGreen ? 'var(--green)' : 'var(--red)' }}>
-                          {isGreen ? 'Green' : 'Dirty'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={isUp ? 'tag-up' : 'tag-down'}>
-                          {isUp ? '▲' : '▼'} {isUp ? 'scale_up' : 'scale_down'}
-                        </span>
-                      </td>
-                      <td style={{ fontFamily: 'DM Mono, monospace' }}>
-                        {d.batch_target_vcpus ?? '—'}
-                      </td>
-                    </tr>
+                    <React.Fragment key={i}>
+                      <tr
+                        className={`log-row ${isOpen ? 'log-row-open' : ''}`}
+                        onClick={() => setExpandedIdx(isOpen ? null : i)}
+                      >
+                        <td style={{ fontFamily: 'DM Mono, monospace', fontSize: 12 }}>
+                          <span className="log-chevron" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+                          {t}
+                        </td>
+                        <td style={{ fontFamily: 'DM Mono, monospace' }}>
+                          <span style={{ color: isGreen ? 'var(--green)' : intVal > 400 ? 'var(--red)' : 'var(--amber)' }}>
+                            {Number.isFinite(intVal) ? Math.round(intVal) : '—'}
+                          </span>
+                          <span style={{ color: 'var(--text3)', fontSize: 11 }}> g</span>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: 12, color: isGreen ? 'var(--green)' : 'var(--red)' }}>
+                            {isGreen ? 'Green' : 'Dirty'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={isUp ? 'tag-up' : 'tag-down'}>
+                            {isUp ? '▲' : '▼'} {isUp ? 'scale_up' : 'scale_down'}
+                          </span>
+                        </td>
+                        <td style={{ fontFamily: 'DM Mono, monospace' }}>
+                          {d.batch_target_vcpus ?? '—'}
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="log-detail-row">
+                          <td colSpan={5}>
+                            <div className="log-detail">
+                              <div className="log-detail-reason">{reasoning}</div>
+                              <div className="log-detail-grid">
+                                <div><span className="log-detail-k">Threshold</span><span className="log-detail-v">{Math.round(rowThreshold)} g</span></div>
+                                <div><span className="log-detail-k">Zone</span><span className="log-detail-v">{rowZone}</span></div>
+                                <div><span className="log-detail-k">Source</span><span className="log-detail-v">{source}</span></div>
+                                <div><span className="log-detail-k">Timestamp</span><span className="log-detail-v">{fullTs}</span></div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   )
                 })}
               </tbody>
