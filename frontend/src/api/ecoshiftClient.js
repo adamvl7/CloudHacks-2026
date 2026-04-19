@@ -32,3 +32,21 @@ export async function getPowerBreakdown() {
     return null
   }
 }
+
+export async function getForecast() {
+  try {
+    const { data } = await client.get('/forecast')
+    return data // { zone, threshold, forecast: [{ datetime, carbonIntensity }] }
+  } catch {
+    return null
+  }
+}
+
+export async function getRegionCompare() {
+  try {
+    const { data } = await client.get('/region-compare')
+    return data // { current_zone, regions: [{ zone, carbonIntensity, label }] }
+  } catch {
+    return null
+  }
+}
