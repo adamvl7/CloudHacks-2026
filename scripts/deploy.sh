@@ -25,9 +25,12 @@ API_BASE=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
   --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue" --output text)
 DASH_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
   --query "Stacks[0].Outputs[?OutputKey=='DashboardUrl'].OutputValue" --output text)
+DIST_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='DashboardDistributionId'].OutputValue" --output text)
 
 echo "    DashboardBucket: $DASHBOARD_BUCKET"
 echo "    ApiBaseUrl:      $API_BASE"
+echo "    DistributionId:  $DIST_ID"
 
 echo "==> building frontend"
 pushd frontend >/dev/null
@@ -39,10 +42,7 @@ popd >/dev/null
 echo "==> syncing dist/ to s3://$DASHBOARD_BUCKET"
 aws s3 sync frontend/dist/ "s3://$DASHBOARD_BUCKET/" --delete
 
-DIST_ID=$(aws cloudfront list-distributions \
-  --query "DistributionList.Items[?contains(Origins.Items[0].DomainName, '$DASHBOARD_BUCKET')].Id" \
-  --output text)
-if [[ -n "$DIST_ID" ]]; then
+if [[ -n "$DIST_ID" && "$DIST_ID" != "None" ]]; then
   echo "==> invalidating CloudFront distribution $DIST_ID"
   aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths '/*' >/dev/null
 fi

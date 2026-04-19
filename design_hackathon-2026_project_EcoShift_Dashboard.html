@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Nimbus · Carbon-Aware Scheduler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="ecoshift-components.jsx"></script>
+<style>
+:root{--bg:#f5f7f3;--card:#fff;--border:#e6ece3;--sidebar-bg:#1a2e1e;--sidebar-border:rgba(255,255,255,0.07);--text:#1a2418;--text2:#4a5c47;--text3:#8a9e87;--primary:#2d6a4f;--primary-light:rgba(45,106,79,0.08);--green:#3a9e64;--amber:#b5752a;--red:#c0392b;--sidebar-accent:#52b788;
+--sb-title:#fff;--sb-sub:rgba(255,255,255,0.3);--sb-section:rgba(255,255,255,0.2);
+--sb-nav:rgba(255,255,255,0.42);--sb-nav-hover-bg:rgba(255,255,255,0.07);--sb-nav-hover:rgba(255,255,255,0.85);
+--sb-nav-active-bg:rgba(255,255,255,0.1);--sb-nav-active:#fff;
+--sb-zone:rgba(255,255,255,0.38);--sb-time:rgba(255,255,255,0.2);
+--sb-toggle-border:rgba(255,255,255,0.14);--sb-toggle-color:rgba(255,255,255,0.5)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;display:flex}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+input,select{font-family:inherit}
+#root{display:flex;width:100%;height:100%}
+.layout{display:flex;width:100%;height:100%;overflow:hidden}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:220px;flex-shrink:0;background:var(--sidebar-bg);
+  display:flex;flex-direction:column;height:100%;
+  position:relative;transition:width 0.28s cubic-bezier(0.4,0,0.2,1);overflow:visible;
+}
+.sidebar.collapsed{width:60px}
+.sidebar-toggle{
+  position:absolute;right:-13px;top:50%;transform:translateY(-50%);z-index:20;
+  width:26px;height:26px;border-radius:50%;
+  background:var(--sidebar-bg);border:1.5px solid var(--sb-toggle-border);
+  color:var(--sb-toggle-color);display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;cursor:pointer;font-size:11px;line-height:1;
+}
+.sidebar-toggle:hover{background:var(--sidebar-bg);opacity:0.85;color:var(--sb-nav-active);border-color:var(--sb-nav-active)}
+.sidebar-brand{
+  padding:26px 18px 22px;border-bottom:1px solid var(--sidebar-border);
+  flex-shrink:0;white-space:nowrap;overflow:hidden;
+}
+.sidebar.collapsed .sidebar-brand{padding:20px 8px 18px}
+.brand-name{font-size:21px;font-weight:600;letter-spacing:-0.025em;color:var(--sb-title);line-height:1.1;transition:font-size 0.2s,color 0.4s}
+.sidebar.collapsed .brand-name{font-size:17px;text-align:center;padding:0 4px}
+.brand-accent{color:var(--sidebar-accent);font-style:italic;transition:color 0.5s}
+.brand-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--sb-sub);text-transform:uppercase;letter-spacing:0.18em;margin-top:5px;transition:opacity 0.2s}
+.sidebar.collapsed .brand-sub{opacity:0;pointer-events:none}
+.sidebar-section-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--sb-section);text-transform:uppercase;letter-spacing:0.2em;padding:16px 18px 6px;white-space:nowrap;overflow:hidden;transition:opacity 0.2s}
+.sidebar.collapsed .sidebar-section-label{opacity:0}
+.sidebar-nav{flex:1;padding:6px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;overflow-x:clip}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:8px;
+  font-size:13.5px;font-weight:500;color:var(--sb-nav);
+  transition:all 0.15s;text-align:left;width:100%;white-space:nowrap;overflow:hidden;
+  flex-shrink:0;
+}
+.sidebar.collapsed .nav-item{padding:10px;justify-content:center;gap:0}
+.nav-item:hover{background:var(--sb-nav-hover-bg);color:var(--sb-nav-hover)}
+.nav-item.active{background:var(--sb-nav-active-bg);color:var(--sb-nav-active)}
+.nav-label{transition:opacity 0.15s,width 0.28s;overflow:hidden}
+.sidebar.collapsed .nav-label{opacity:0;width:0;pointer-events:none}
+.nav-icon-wrap{flex-shrink:0;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+.sidebar-footer{padding:14px 18px 24px;border-top:1px solid var(--sidebar-border);flex-shrink:0;overflow:clip}
+.sidebar-zone{font-family:'DM Mono',monospace;font-size:10px;color:var(--sb-zone);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:7px;white-space:nowrap;transition:opacity 0.2s}
+.sidebar.collapsed .sidebar-zone,.sidebar.collapsed .sidebar-footer-extra{opacity:0;pointer-events:none}
+.sidebar-status{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;transition:color 0.5s;white-space:nowrap}
+.sidebar.collapsed .sidebar-status span{display:none}
+.sidebar-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:background 0.5s,box-shadow 0.5s}
+
+/* ── Main ── */
+.main{flex:1;overflow-y:auto;min-width:0;padding:32px 32px 72px;transition:padding 0.2s}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-0.025em;color:var(--text)}
+.page-meta{display:flex;align-items:center;gap:12px}
+.zone-chip{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:4px 10px;text-transform:uppercase;letter-spacing:0.1em}
+.live-pill{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:20px;background:rgba(58,158,100,0.1);border:1px solid rgba(58,158,100,0.22);font-family:'DM Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.12em}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2.5s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(58,158,100,0.55)}70%{box-shadow:0 0 0 7px rgba(58,158,100,0)}100%{box-shadow:0 0 0 0 rgba(58,158,100,0)}}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px 22px 24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03),0 4px 12px rgba(0,0,0,0.018)}
+.card-label{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.18em}
+
+/* ── Grid ── */
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.span2{grid-column:span 2}
+.mb16{margin-bottom:16px}
+
+/* ── Region Banner ── */
+.region-banner{display:flex;align-items:center;gap:11px;padding:10px 16px;margin-bottom:16px;border:1px solid rgba(58,158,100,0.2);background:rgba(58,158,100,0.06);border-radius:8px;font-size:13px;color:var(--text)}
+.region-banner-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(58,158,100,0.18);flex-shrink:0}
+.region-banner strong{color:var(--green);font-weight:600;font-family:'DM Mono',monospace;font-size:11px}
+
+/* ── Table ── */
+.log-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:11.5px}
+.log-table th{text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.14em;padding:0 12px 10px;border-bottom:1px solid var(--border);font-weight:500}
+.log-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
+.log-table tr:last-child td{border-bottom:none}
+.log-table tr:hover td{background:var(--bg)}
+.log-scroll{max-height:380px;overflow-y:auto;border:1px solid var(--border);border-radius:10px}
+
+/* ── Settings Form ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.14em}
+.field input,.field select{background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13.5px;color:var(--text);outline:none;transition:border-color 0.2s;width:100%}
+.field input:focus,.field select:focus{border-color:var(--primary)}
+.field input[type=range]{padding:4px 0;accent-color:var(--primary)}
+.range-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--primary);margin-top:2px}
+.save-btn{background:var(--primary);color:#fff;border-radius:9px;padding:11px 28px;font-size:14px;font-weight:600;letter-spacing:-0.01em;transition:all 0.2s;border:none;cursor:pointer}
+.save-btn:hover{opacity:0.88;transform:translateY(-1px)}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:10px 22px;border-radius:20px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:500;animation:toastIn 0.3s ease}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── Report Cards ── */
+.report-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:border-color 0.2s,box-shadow 0.2s}
+.report-card:hover{border-color:var(--primary);box-shadow:0 4px 16px rgba(0,0,0,0.07)}
+.report-narrative{font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.65;color:var(--text);font-style:italic;margin-top:6px;padding-top:12px;border-top:1px solid var(--border)}
+.narrative-byline{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.14em;padding-top:10px;border-top:1px solid var(--border);margin-top:4px}
+
+/* ── Footer ── */
+.footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.14em}
+
+@media(max-width:1180px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:820px){.g4,.g2,.g3,.settings-grid{grid-template-columns:1fr}.span2{grid-column:1}.main{padding:20px 16px 60px}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+
+const { useState, useEffect, useMemo, useCallback } = React;
+
+// ── Color Schemes ──────────────────────────────────────────────────────────
+const SCHEMES = {
+  forest: { '--bg': '#f5f7f3', '--card': '#fff', '--border': '#e6ece3', '--sidebar-bg': '#1a2e1e', '--sidebar-accent': '#52b788', '--text': '#1a2418', '--text2': '#4a5c47', '--text3': '#8a9e87', '--primary': '#2d6a4f', '--primary-light': 'rgba(45,106,79,0.08)', '--green': '#3a9e64', '--amber': '#b5752a', '--red': '#c0392b' },
+  ocean: { '--bg': '#f2f6f8', '--card': '#fff', '--border': '#dce9ed', '--sidebar-bg': '#0d2535', '--sidebar-accent': '#4ecdc4', '--text': '#0d2028', '--text2': '#3a5a64', '--text3': '#7a9aa4', '--primary': '#1a6b7a', '--primary-light': 'rgba(26,107,122,0.08)', '--green': '#2a9d8f', '--amber': '#e07a45', '--red': '#e63946' },
+  earth: { '--bg': '#f8f5f0', '--card': '#fff', '--border': '#ede5d8', '--sidebar-bg': '#2a1c0a', '--sidebar-accent': '#c5a55a', '--text': '#2a1c0a', '--text2': '#6b5040', '--text3': '#9a8870', '--primary': '#7a5c2a', '--primary-light': 'rgba(122,92,42,0.08)', '--green': '#4a7c59', '--amber': '#d4860a', '--red': '#c0392b' },
+  // ── Company themes ──
+  aws: { '--bg': '#f7f8fa', '--card': '#fff', '--border': '#e3e7ec', '--sidebar-bg': '#ffffff', '--sidebar-border': 'rgba(0,0,0,0.07)', '--sidebar-accent': '#ff9900', '--text': '#16202c', '--text2': '#3d5166', '--text3': '#8a9bb0', '--primary': '#ff9900', '--primary-light': 'rgba(255,153,0,0.1)', '--green': '#1a8a4a', '--amber': '#e07a00', '--red': '#d13212', '--sb-title': '#3d5166', '--sb-sub': 'rgba(0,0,0,0.3)', '--sb-section': 'rgba(0,0,0,0.22)', '--sb-nav': 'rgba(0,0,0,0.45)', '--sb-nav-hover-bg': 'rgba(255,153,0,0.08)', '--sb-nav-hover': '#ff9900', '--sb-nav-active-bg': 'rgba(255,153,0,0.12)', '--sb-nav-active': '#ff9900', '--sb-zone': 'rgba(0,0,0,0.38)', '--sb-time': 'rgba(0,0,0,0.22)', '--sb-toggle-border': 'rgba(0,0,0,0.12)', '--sb-toggle-color': 'rgba(0,0,0,0.4)' },
+  google: { '--bg': '#f8f9ff', '--card': '#fff', '--border': '#e1e8f5', '--sidebar-bg': '#202124', '--sidebar-accent': '#4285f4', '--text': '#202124', '--text2': '#3c4a5e', '--text3': '#80909e', '--primary': '#4285f4', '--primary-light': 'rgba(66,133,244,0.08)', '--green': '#34a853', '--amber': '#fbbc05', '--red': '#ea4335' }
+};
+function applyScheme(n) {const s = SCHEMES[n] || SCHEMES.forest;Object.entries(s).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));}
+
+// ── Data Simulation ────────────────────────────────────────────────────────
+function genHistory(threshold = 250) {
+  const now = Date.now();
+  return Array.from({ length: 96 }, (_, i) => {
+    const minsAgo = (95 - i) * 15,t = now - minsAgo * 60000;
+    const h = new Date(t).getHours() + new Date(t).getMinutes() / 60;
+    const solar = Math.max(0, Math.sin(Math.max(0, (h - 6.5) / 8.5) * Math.PI)) * 160;
+    const intensity = Math.max(88, Math.min(510, 340 - solar + Math.sin(i * 0.31) * 22 + Math.sin(i * 0.87 + 1.2) * 12));
+    return { t, intensity, action: intensity <= threshold ? 'scale_up' : 'scale_down', vcpus: intensity <= threshold ? 16 : 0 };
+  });
+}
+function genPower(intensity) {
+  return { solar: intensity < 200 ? 8800 : intensity < 300 ? 4200 : 1100, wind: 2200 + Math.sin(Date.now() / 40000) * 400, nuclear: 2100, hydro: 1600, geothermal: 280, gas: Math.max(0, intensity * 16 - 1800), coal: 0 };
+}
+
+// ── Historical Reports ─────────────────────────────────────────────────────
+const REPORT_NARRATIVES = [
+"shifted 9.3 hours of compute to clean-energy windows, avoiding 18.4 kg CO₂ — roughly equivalent to not driving 45 miles in an average passenger car. The grid ran at 43% renewables with a strong solar peak between 10 am and 3 pm.",
+"captured 11.0 hours of green compute time amid an unusually windy afternoon, avoiding 22.1 kg CO₂ (≈ 55 miles not driven). Wind contributed 31% of grid output — the highest this week.",
+"navigated a challenging grid day with elevated morning gas generation. Despite limited green windows, 6.5 hours were shifted, avoiding 11.8 kg CO₂. Forecast-based pre-positioning would have improved this by ~20%.",
+"delivered a strong result: 13.2 hours shifted, 26.7 kg CO₂ avoided. Nuclear and hydro provided a stable overnight clean baseline, letting workloads run continuously from 11 pm through 8 am.",
+"ran during moderate conditions. Solar underperformed due to overcast skies, but 7.8 hours were still shifted, avoiding 14.2 kg CO₂. Net cost saving: $1.74 vs flat-schedule baseline.",
+"achieved 10.1 hours shifted and avoided 19.9 kg CO₂. The evening peak was higher than average — natural gas spiked to 62% of generation from 6–9 pm, correctly triggering a pause.",
+"saw the week's lowest carbon intensity. Geothermal and hydro provided 44% of generation. Nimbus ran jobs for 14.5 of 24 hours, avoiding 28.3 kg CO₂ — the best day this reporting period."];
+
+const REPORTS = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date();d.setDate(d.getDate() - (i + 1));
+  const shifted = 6 + Math.sin(i * 1.3) * 3.5 + 2;
+  const gco2 = shifted * 8 * 16 / 1000 * (180 + i * 20);
+  const pctClean = 38 + Math.sin(i * 0.9) * 12;
+  return { date: d, shifted: shifted.toFixed(1), gco2: gco2.toFixed(0), pctClean: pctClean.toFixed(0), narrative: REPORT_NARRATIVES[i] };
+});
+
+const SUMMARY_NARRATIVE = `Today Nimbus shifted 9.25 hours of batch compute to clean-energy windows across the California grid (US-CAL-CISO), avoiding an estimated 18.4 kg of CO₂ — roughly equivalent to not driving 45 miles in an average passenger car. The grid ran at 43% renewables today, with a pronounced solar peak between 10 am and 3 pm that EcoShift captured in full. Cost impact: approximately $2.14 saved versus a flat-schedule baseline.`;
+
+// ── Tweak Defaults ─────────────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "scheme": "aws",
+  "gaugeStyle": "arc"
+}; /*EDITMODE-END*/
+
+// ── Cloud Logo ─────────────────────────────────────────────────────────────
+function CloudLogo({ size = 36 }) {
+  return (
+    <svg width={size} height={size * 0.72} viewBox="0 0 50 36" fill="var(--sidebar-accent)" style={{ height: "23.0391px", width: "60px" }}>
+      {/* Tallest bump — right */}
+      <circle cx="33" cy="14" r="11" />
+      {/* Mid bump — center */}
+      <circle cx="20" cy="18" r="8.5" />
+      {/* Small bump — left */}
+      <circle cx="10" cy="21" r="6" />
+      {/* Flat cloud base */}
+      <rect x="4" y="21" width="40" height="11" rx="5.5" />
+    </svg>);
+
+}
+const Icons = {
+  Overview: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1.5" y="1.5" width="5" height="5" rx="1" /><rect x="9.5" y="1.5" width="5" height="5" rx="1" /><rect x="1.5" y="9.5" width="5" height="5" rx="1" /><rect x="9.5" y="9.5" width="5" height="5" rx="1" /></svg>,
+  Timeline: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,11 5,7 8,9 11,4 14.5,6" /><line x1="1.5" y1="14" x2="14.5" y2="14" /></svg>,
+  Reports: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2.5" y="1.5" width="11" height="13" rx="1.5" /><line x1="5" y1="5.5" x2="11" y2="5.5" /><line x1="5" y1="8" x2="11" y2="8" /><line x1="5" y1="10.5" x2="8.5" y2="10.5" /></svg>,
+  Settings: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="2.5" /><path d="M8 1.5v1.2M8 13.3v1.2M1.5 8h1.2M13.3 8h1.2M3.2 3.2l.85.85M11.95 11.95l.85.85M3.2 12.8l.85-.85M11.95 4.05l.85-.85" /></svg>
+};
+
+// ── Overview Page ──────────────────────────────────────────────────────────
+function OverviewPage({ history, savings, powerData, threshold, tweaks }) {
+  const current = history[history.length - 1];
+  const intensity = current?.intensity;
+  const isGreen = intensity != null && intensity <= threshold;
+  return (
+    <>
+      {!isGreen &&
+      <div className="region-banner">
+          <span className="region-banner-dot" />
+          <span><strong>US-WEST-2</strong> is <strong>38%</strong> cleaner than US-CAL-CISO right now — consider shifting queue?</span>
+        </div>
+      }
+      <div className="grid g4 mb16">
+        <div className="card">
+          <div className="card-label">Grid Intensity</div>
+          <GaugeMeter intensity={intensity} threshold={threshold} gaugeStyle={tweaks.gaugeStyle} />
+        </div>
+        <div className="card">
+          <div className="card-label">Batch Status</div>
+          <BatchStateCard action={current?.action} vcpus={current?.vcpus} checkedAt={current ? new Date(current.t) : null} />
+        </div>
+        <div className="card">
+          <div className="card-label">Savings · Last 24h</div>
+          <SavingsCard {...savings} />
+        </div>
+        <div className="card">
+          <div className="card-label">Decision Counts · 24h</div>
+          <DecisionCounts history={history} />
+        </div>
+      </div>
+      <div className="card mb16">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div className="card-label">24h Decision Timeline</div>
+          <div style={{ display: 'flex', gap: 18, fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text3)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 18, height: 2, background: 'var(--primary)', display: 'inline-block', borderRadius: 1 }} /> Intensity</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 18, height: 0, borderTop: '2px dashed var(--amber)', display: 'inline-block' }} /> Threshold</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, background: 'rgba(192,57,43,0.15)', display: 'inline-block', borderRadius: 2 }} /> Dirty</span>
+          </div>
+        </div>
+        <TimelineChart data={history} threshold={threshold} />
+      </div>
+      <div className="grid g2">
+        <div className="card">
+          <div className="card-label">Energy Mix · US-CAL-CISO</div>
+          <PowerBreakdown data={powerData} />
+        </div>
+        <div className="card">
+          <div className="card-label">Bedrock Sustainability Report</div>
+          <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 15, lineHeight: 1.7, color: 'var(--text)', fontStyle: 'italic' }}>"{SUMMARY_NARRATIVE}"</p>
+          <div className="narrative-byline">Generated by Amazon Bedrock · Claude Sonnet 4 · {new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+        </div>
+      </div>
+    </>);
+
+}
+
+// ── Timeline Page ──────────────────────────────────────────────────────────
+function TimelinePage({ history, savings, threshold }) {
+  const green = history.filter((d) => d.action === 'scale_up').length;
+  const total = history.length;
+  const intensities = history.map((d) => d.intensity);
+  const avg = (intensities.reduce((a, b) => a + b, 0) / intensities.length).toFixed(0);
+  const min = Math.min(...intensities).toFixed(0);
+  const max = Math.max(...intensities).toFixed(0);
+  return (
+    <>
+      <div className="grid g4 mb16">
+        {[
+        { label: 'Decisions', value: total, unit: 'checks' },
+        { label: 'Clean share', value: `${Math.round(green / total * 100)}%`, unit: '' },
+        { label: 'Avg intensity', value: avg, unit: 'g/kWh' },
+        { label: 'Range today', value: `${min}–${max}`, unit: 'g/kWh' }].
+        map((s) =>
+        <div key={s.label} className="card">
+            <div className="card-label">{s.label}</div>
+            <div style={{ fontFamily: 'DM Mono,monospace', fontSize: 32, fontWeight: 500, color: 'var(--text)', letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{s.value}</div>
+            {s.unit && <div style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{s.unit}</div>}
+          </div>
+        )}
+      </div>
+      <div className="card mb16">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div className="card-label">Full 24h Carbon Intensity Chart</div>
+          <div style={{ display: 'flex', gap: 18, fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text3)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 18, height: 2, background: 'var(--primary)', display: 'inline-block', borderRadius: 1 }} /> Intensity</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 18, height: 0, borderTop: '2px dashed var(--amber)', display: 'inline-block' }} /> {threshold}g threshold</span>
+          </div>
+        </div>
+        <TimelineChart data={history} threshold={threshold} />
+      </div>
+      <div className="card">
+        <div className="card-label">Decision Log</div>
+        <div className="log-scroll">
+          <table className="log-table">
+            <thead><tr><th>Time</th><th>Intensity</th><th>State</th><th>Action</th><th>vCPUs</th></tr></thead>
+            <tbody>
+              {[...history].reverse().map((d, i) => {
+                const isUp = d.action === 'scale_up';
+                return (
+                  <tr key={i}>
+                    <td style={{ color: 'var(--text)' }}>{new Date(d.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                    <td style={{ color: d.intensity <= threshold ? 'var(--green)' : d.intensity <= 400 ? 'var(--amber)' : 'var(--red)', fontWeight: 500 }}>{Math.round(d.intensity)} g</td>
+                    <td><span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 500, background: isUp ? 'rgba(58,158,100,0.1)' : 'rgba(192,57,43,0.08)', color: isUp ? 'var(--green)' : 'var(--red)' }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />{isUp ? 'Green' : 'Dirty'}</span></td>
+                    <td style={{ color: 'var(--text2)' }}>{isUp ? 'scale_up' : 'scale_down'}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--text)' }}>{d.vcpus}</td>
+                  </tr>);
+
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>);
+
+}
+
+// ── Reports Page ───────────────────────────────────────────────────────────
+function ReportsPage() {
+  const [expanded, setExpanded] = useState(null);
+  return (
+    <>
+      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <p style={{ fontSize: 14, color: 'var(--text2)', maxWidth: 520 }}>Daily AI-generated sustainability reports. Each report is produced by Amazon Bedrock (Claude Sonnet 4) at 23:55 UTC from that day's scheduling decisions.</p>
+        <div className="zone-chip">Last 7 days</div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {REPORTS.map((r, i) => {
+          const isOpen = expanded === i;
+          const dateStr = r.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+          return (
+            <div key={i} className="report-card" onClick={() => setExpanded(isOpen ? null : i)}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', letterSpacing: '-0.01em' }}>{dateStr}</div>
+                  <div style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 4 }}>Generated by Bedrock · Claude Sonnet 4</div>
+                </div>
+                <div style={{ display: 'flex', gap: 20, flexShrink: 0 }}>
+                  {[{ v: r.shifted + 'h', l: 'Shifted' }, { v: r.gco2 / 1000 > 1 ? `${(r.gco2 / 1000).toFixed(1)} kg` : `${r.gco2} g`, l: 'CO₂ Avoided' }, { v: r.pctClean + '%', l: 'Clean Grid' }].map((s) =>
+                  <div key={s.l} style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: 'DM Mono,monospace', fontSize: 16, fontWeight: 500, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{s.v}</div>
+                      <div style={{ fontFamily: 'DM Mono,monospace', fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 2 }}>{s.l}</div>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, background: 'var(--bg)', border: '1px solid var(--border)', transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text3)" strokeWidth="1.5" strokeLinecap="round"><polyline points="2,4 6,8 10,4" /></svg>
+                  </div>
+                </div>
+              </div>
+              {isOpen &&
+              <div className="report-narrative" onClick={(e) => e.stopPropagation()}>
+                  <p>"{dateStr.split(',')[0]}, Nimbus {r.narrative}"</p>
+                  <div className="narrative-byline" style={{ marginTop: 12 }}>Amazon Bedrock · Claude Sonnet 4 · {r.date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                </div>
+              }
+            </div>);
+
+        })}
+      </div>
+    </>);
+
+}
+
+// ── Settings Page ──────────────────────────────────────────────────────────
+function SettingsPage({ settings, onSave, tweaks, onTweakChange }) {
+  const [form, setForm] = useState({ ...settings });
+  const [saved, setSaved] = useState(false);
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const handleSave = () => {onSave(form);setSaved(true);setTimeout(() => setSaved(false), 2400);};
+
+  const COMPANY_THEMES = [
+  { id: 'aws', label: 'Amazon AWS', dot: '#ff9900', sidebar: '#232f3e' },
+  { id: 'google', label: 'Google', dot: '#4285f4', sidebar: '#202124', dots: ['#4285f4', '#ea4335', '#fbbc05', '#34a853'] }];
+
+  const BASE_THEMES = [
+  { id: 'ocean', label: 'Ocean', dot: '#1a6b7a' },
+  { id: 'forest', label: 'Forest', dot: '#2d6a4f' },
+  { id: 'earth', label: 'Earth', dot: '#7a5c2a' }];
+
+
+  const ThemeBtn = ({ id, label, dot, sidebar, dots }) => {
+    const active = tweaks.scheme === id;
+    return (
+      <button onClick={() => onTweakChange({ scheme: id })} title={label}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, padding: '10px 8px', border: `2px solid ${active ? dot : 'var(--border)'}`, borderRadius: 10, background: active ? `${dot}12` : 'transparent', cursor: 'pointer', transition: 'all 0.18s', minWidth: 82 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: sidebar, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 8px ${dot}44` }}>
+          {dots ?
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+              {dots.map((c, i) => <div key={i} style={{ width: 9, height: 9, borderRadius: 2, background: c }} />)}
+            </div> :
+
+          <div style={{ width: 14, height: 14, borderRadius: 3, background: dot }} />
+          }
+        </div>
+        <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: active ? dot : 'var(--text3)', letterSpacing: '0.04em', textAlign: 'center', lineHeight: 1.3 }}>{label}</span>
+      </button>);
+
+  };
+
+  return (
+    <>
+      <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 28, maxWidth: 520 }}>Configure your Nimbus deployment. Changes here would be applied to the scheduler Lambda's environment variables on save.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+        <div className="card">
+          <div className="card-label">Dashboard Theme</div>
+          <div style={{ marginBottom: 4 }}>
+            <div style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>Company</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {COMPANY_THEMES.map((t) => <ThemeBtn key={t.id} {...t} />)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>Default</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {BASE_THEMES.map((t) => <ThemeBtn key={t.id} {...t} />)}
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-label">Grid Configuration</div>
+          <div className="settings-grid">
+            <div className="field">
+              <label>Grid Zone</label>
+              <select value={form.zone} onChange={(e) => set('zone', e.target.value)}>
+                {['US-CAL-CISO', 'US-WEST-2', 'US-EAST-1', 'EU-DE-TENNET', 'EU-FR', 'AP-SOUTHEAST-1'].map((z) => <option key={z}>{z}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Refresh Interval</label>
+              <select value={form.refreshInterval} onChange={(e) => set('refreshInterval', Number(e.target.value))}>
+                {[5, 10, 15, 30].map((v) => <option key={v} value={v}>{v} minutes</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label>Green Threshold: <span className="range-val">{form.threshold} gCO₂/kWh</span></label>
+              <input type="range" min={80} max={450} step={5} value={form.threshold} onChange={(e) => set('threshold', Number(e.target.value))} style={{ width: '100%' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text3)', marginTop: 2 }}><span>80 (very strict)</span><span>450 (lenient)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-label">Notifications</div>
+          <div className="settings-grid">
+            <div className="field">
+              <label>Report Email (SES)</label>
+              <input type="email" placeholder="sustainability@example.com" value={form.email} onChange={(e) => set('email', e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Report Time (UTC)</label>
+              <input type="time" value={form.reportTime || '23:55'} onChange={(e) => set('reportTime', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-label">Bedrock Model</div>
+          <div className="settings-grid">
+            <div className="field">
+              <label>Model ID</label>
+              <select value={form.modelId || 'anthropic.claude-sonnet-4'} onChange={(e) => set('modelId', e.target.value)}>
+                <option value="anthropic.claude-sonnet-4">Claude Sonnet 4</option>
+                <option value="anthropic.claude-haiku-4">Claude Haiku 4</option>
+              </select>
+            </div>
+            <div className="field">
+              <label>AWS Region</label>
+              <select value={form.awsRegion || 'us-west-2'} onChange={(e) => set('awsRegion', e.target.value)}>
+                {['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'].map((r) => <option key={r}>{r}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="save-btn" onClick={handleSave}>Save Configuration</button>
+        </div>
+      </div>
+      {saved && <div className="toast">✓ Configuration saved</div>}
+    </>);
+
+}
+
+// ── App ────────────────────────────────────────────────────────────────────
+function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('es-sidebar') !== '0');
+  const [navActive, setNavActive] = useState(() => localStorage.getItem('es-nav') || 'Overview');
+  const [history, setHistory] = useState(() => genHistory());
+  const [tweaks, setTweaks] = useState(() => {try {return { ...TWEAK_DEFAULTS, ...JSON.parse(localStorage.getItem('ecoshift-ui') || '{}') };} catch {return { ...TWEAK_DEFAULTS };}});
+  const [tweakVisible, setTweakVisible] = useState(false);
+  const [lastFetch, setLastFetch] = useState(new Date());
+  const [settings, setSettings] = useState(() => {try {return JSON.parse(localStorage.getItem('es-settings') || 'null') || { zone: 'US-CAL-CISO', threshold: 250, maxVcpus: 16, email: '', refreshInterval: 15, reportTime: '23:55', modelId: 'anthropic.claude-sonnet-4', awsRegion: 'us-west-2' };} catch {return { zone: 'US-CAL-CISO', threshold: 250, maxVcpus: 16, email: '', refreshInterval: 15 };}});
+
+  useEffect(() => {applyScheme(tweaks.scheme);}, [tweaks.scheme]);
+  useEffect(() => {localStorage.setItem('es-sidebar', sidebarOpen ? '1' : '0');}, [sidebarOpen]);
+  useEffect(() => {localStorage.setItem('es-nav', navActive);}, [navActive]);
+
+  useEffect(() => {
+    const id = setInterval(() => {setHistory(genHistory(settings.threshold));setLastFetch(new Date());}, 30000);
+    return () => clearInterval(id);
+  }, [settings.threshold]);
+
+  useEffect(() => {
+    const h = (e) => {if (e.data?.type === '__activate_edit_mode') setTweakVisible(true);if (e.data?.type === '__deactivate_edit_mode') setTweakVisible(false);};
+    window.addEventListener('message', h);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', h);
+  }, []);
+
+  const handleTweakChange = useCallback((delta) => {
+    setTweaks((prev) => {const next = { ...prev, ...delta };localStorage.setItem('ecoshift-ui', JSON.stringify(next));window.parent.postMessage({ type: '__edit_mode_set_keys', edits: next }, '*');return next;});
+  }, []);
+
+  const handleSaveSettings = useCallback((s) => {
+    setSettings(s);localStorage.setItem('es-settings', JSON.stringify(s));
+    setHistory(genHistory(s.threshold));
+  }, []);
+
+  const threshold = settings.threshold;
+  const current = history[history.length - 1];
+  const intensity = current?.intensity;
+  const isGreen = intensity != null && intensity <= threshold;
+
+  const savings = useMemo(() => {
+    if (!history.length) return {};
+    const avg = history.reduce((s, d) => s + d.intensity, 0) / history.length;
+    const gPts = history.filter((d) => d.action === 'scale_up');
+    const maxV = settings.maxVcpus,TH = 0.25,W = 8;
+    const runVH = gPts.reduce((s, d) => s + d.vcpus * TH, 0);
+    const cfVH = maxV * history.length * TH;
+    const gco2A = gPts.reduce((s, d) => s + d.vcpus * TH * W / 1000 * d.intensity, 0);
+    const gco2CF = cfVH * W / 1000 * avg;
+    const gco2Avoided = Math.max(0, gco2CF - gco2A);
+    return { gco2Avoided, pctCleaner: gco2CF > 0 ? gco2Avoided / gco2CF * 100 : null, pctCheaper: cfVH > 0 ? (cfVH - runVH) / cfVH * 100 : null, miles: gco2Avoided / 404, avgIntensity: avg };
+  }, [history, settings.maxVcpus]);
+
+  const powerData = useMemo(() => genPower(intensity ?? 220), [intensity]);
+  const sidebarColor = isGreen ? 'var(--sidebar-accent)' : '#e07060';
+
+  const NAV = ['Overview', 'Timeline', 'Reports', 'Settings'];
+
+  const pageTitle = navActive;
+  const showLive = ['Overview', 'Timeline'].includes(navActive);
+
+  return (
+    <div className="layout">
+      <aside className={`sidebar${sidebarOpen ? '' : ' collapsed'}`}>
+        <button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
+          {sidebarOpen ? '←' : '→'}
+        </button>
+        <div className="sidebar-brand">
+          {sidebarOpen ?
+          <>
+              <div className="brand-name" style={{ color: 'var(--sb-title)' }}>Nimbus</div>
+              <div className="brand-sub">Carbon-aware scheduler</div>
+            </> :
+
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 2px' }}>
+              <CloudLogo size={32} />
+            </div>
+          }
+        </div>
+        <div className="sidebar-section-label">Menu</div>
+        <nav className="sidebar-nav">
+          {NAV.map((label) => {
+            const Icon = Icons[label];
+            return (
+              <button key={label} className={`nav-item${navActive === label ? ' active' : ''}`} onClick={() => setNavActive(label)} title={label}>
+                <span className="nav-icon-wrap"><Icon /></span>
+                <span className="nav-label">{label}</span>
+              </button>);
+
+          })}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="sidebar-zone">{settings.zone}</div>
+          <div className="sidebar-status" style={{ color: sidebarColor }}>
+            <div className="sidebar-dot" style={{ background: sidebarColor, boxShadow: `0 0 0 3px ${isGreen ? 'rgba(82,183,136,0.2)' : 'rgba(224,112,96,0.2)'}` }} />
+            <span>{isGreen ? 'Grid: Green' : 'Grid: Dirty'}</span>
+          </div>
+          <div className="sidebar-footer-extra" style={{ fontFamily: 'DM Mono,monospace', fontSize: 9, color: 'var(--sb-time)', marginTop: 8, textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+            {lastFetch.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+      </aside>
+
+      <main className="main">
+        <div className="page-header">
+          <h1 className="page-title">{pageTitle}</h1>
+          <div className="page-meta">
+            <span className="zone-chip">{settings.zone}</span>
+            {showLive && <div className="live-pill"><span className="live-dot" />Live · 30s</div>}
+          </div>
+        </div>
+
+        {navActive === 'Overview' && <OverviewPage history={history} savings={savings} powerData={powerData} threshold={threshold} tweaks={tweaks} />}
+        {navActive === 'Timeline' && <TimelinePage history={history} savings={savings} threshold={threshold} />}
+        {navActive === 'Reports' && <ReportsPage />}
+        {navActive === 'Settings' && <SettingsPage settings={settings} onSave={handleSaveSettings} tweaks={tweaks} onTweakChange={handleTweakChange} />}
+
+        <footer className="footer">
+          <span>AWS Lambda · Batch · DynamoDB · Bedrock · CloudFront</span>
+          <span>Cloud Hacks 2026</span>
+        </footer>
+      </main>
+
+      <TweaksPanel tweaks={tweaks} onChange={handleTweakChange} visible={tweakVisible} />
+    </div>);
+
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

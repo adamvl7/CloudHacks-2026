@@ -5,6 +5,8 @@ Routes:
   GET /summary/latest          -> most recent daily summary (metrics + narrative)
   GET /current                 -> latest single decision (current grid state)
   GET /power-breakdown         -> live energy mix from ElectricityMaps
+  GET /forecast                -> 24h carbon-intensity forecast for GRID_ZONE
+  GET /region-compare          -> current intensity across a preset of US zones
 """
 from __future__ import annotations
 
@@ -43,6 +45,55 @@ def get_power_breakdown() -> dict:
     req = urllib.request.Request(url, headers={"auth-token": api_key})
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read())
+
+
+REGION_PRESET = [
+    ("US-CAL-CISO", "us-west-1 \u00b7 California"),
+    ("US-NW-PACW", "us-west-2 \u00b7 Oregon"),
+    ("US-TEX-ERCO", "us-south-1 \u00b7 Texas"),
+    ("US-MIDA-PJM", "us-east-1 \u00b7 Virginia"),
+    ("US-NE-ISNE", "us-east-2 \u00b7 New England"),
+]
+
+
+def _em_get(path: str) -> dict:
+    api_key = _get_api_key()
+    url = f"https://api.electricitymap.org/v3{path}"
+    req = urllib.request.Request(url, headers={"auth-token": api_key})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
+
+
+def get_forecast() -> dict:
+    data = _em_get(f"/carbon-intensity/forecast?zone={GRID_ZONE}")
+    raw = data.get("forecast") or data.get("data") or []
+    forecast = []
+    for entry in raw[:24]:
+        dt = entry.get("datetime") or entry.get("time")
+        ci = entry.get("carbonIntensity")
+        if dt is None or ci is None:
+            continue
+        forecast.append({"datetime": dt, "carbonIntensity": float(ci)})
+    return {"zone": GRID_ZONE, "threshold": THRESHOLD, "forecast": forecast}
+
+
+def get_region_compare() -> dict:
+    regions = []
+    for zone, label in REGION_PRESET:
+        try:
+            data = _em_get(f"/carbon-intensity/latest?zone={zone}")
+            ci = data.get("carbonIntensity")
+            if ci is None:
+                continue
+            regions.append({
+                "zone": zone,
+                "carbonIntensity": float(ci),
+                "label": label,
+            })
+        except Exception as e:
+            log.warning("region-compare: skipping %s (%s)", zone, e)
+            continue
+    return {"current_zone": GRID_ZONE, "regions": regions}
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -124,6 +175,12 @@ def lambda_handler(event, context):
 
         if path == "/power-breakdown":
             return _response(200, get_power_breakdown())
+
+        if path == "/forecast":
+            return _response(200, get_forecast())
+
+        if path == "/region-compare":
+            return _response(200, get_region_compare())
 
         return _response(404, {"error": f"unknown path: {path}"})
     except Exception as e:

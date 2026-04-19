@@ -24,6 +24,11 @@ export async function getLatestSummary() {
   }
 }
 
+export async function generateSummary() {
+  const { data } = await client.post('/summary/generate', {}, { timeout: 60_000 })
+  return data
+}
+
 export async function getPowerBreakdown() {
   try {
     const { data } = await client.get('/power-breakdown')

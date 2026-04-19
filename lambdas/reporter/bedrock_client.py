@@ -10,7 +10,7 @@ import boto3
 log = logging.getLogger(__name__)
 _bedrock = boto3.client("bedrock-runtime")
 
-MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-sonnet-4-6")
+MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-sonnet-4-6")
 
 PROMPT_TEMPLATE = """You are the sustainability officer for a cloud engineering team.
 Given the following carbon-aware scheduling data for today, write a

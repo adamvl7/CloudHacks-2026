@@ -33,8 +33,8 @@ Parameters:
     Description: vCPUs to provision during dirty windows (0 = full pause, jobs queue).
   BedrockModelId:
     Type: String
-    Default: anthropic.claude-sonnet-4-6
-    Description: Bedrock model ID for daily narrative summaries.
+    Default: global.anthropic.claude-sonnet-4-6
+    Description: Bedrock Claude inference profile ID for narrative summaries.
   ReportEmail:
     Type: String
     Description: Email address (SES-verified) to receive the daily sustainability report.
@@ -296,17 +296,31 @@ Resources:
         - Statement:
             - Effect: Allow
               Action: bedrock:InvokeModel
-              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+              Resource:
+                - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${BedrockModelId}
+                - arn:aws:bedrock:::foundation-model/anthropic.claude-sonnet-4-6
+                - arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-4-6
+            - Effect: Allow
+              Action:
+                - aws-marketplace:ViewSubscriptions
+                - aws-marketplace:Subscribe
+              Resource: '*'
             - Effect: Allow
               Action: ses:SendEmail
               Resource: '*'
       Events:
-        DailyAt2355UTC:
+        DailyAt0000UTC:
           Type: ScheduleV2
           Properties:
-            ScheduleExpression: cron(55 23 * * ? *)
+            ScheduleExpression: cron(0 0 * * ? *)
             ScheduleExpressionTimezone: UTC
-            Description: EcoShift daily sustainability report
+            Description: EcoShift daily sustainability report at 00:00 UTC
+        GenerateSummary:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /summary/generate
+            Method: POST
 
   # ---------------- Dashboard API Lambda ----------------
   ApiFunction:
@@ -352,19 +366,34 @@ Resources:
             ApiId: !Ref DashboardApi
             Path: /power-breakdown
             Method: GET
+        GetForecast:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /forecast
+            Method: GET
+        GetRegionCompare:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /region-compare
+            Method: GET
 
   DashboardApi:
     Type: AWS::Serverless::HttpApi
     Properties:
       CorsConfiguration:
         AllowOrigins: ['*']
-        AllowMethods: [GET, OPTIONS]
+        AllowMethods: [GET, POST, OPTIONS]
         AllowHeaders: ['*']
 
 Outputs:
   DashboardUrl:
     Description: CloudFront URL for the React dashboard
     Value: !Sub https://${DashboardDistribution.DomainName}
+  DashboardDistributionId:
+    Description: CloudFront distribution ID for dashboard invalidations
+    Value: !Ref DashboardDistribution
   DashboardBucketName:
     Description: S3 bucket to sync the built frontend into
     Value: !Ref DashboardBucket

@@ -5,11 +5,11 @@ import SavingsCard from './components/SavingsCard.jsx'
 import BatchStateCard from './components/BatchStateCard.jsx'
 import DecisionCounts from './components/DecisionCounts.jsx'
 import PowerBreakdown from './components/PowerBreakdown.jsx'
-import AskEcoShift from './components/AskEcoShift.jsx'
 import {
   getCurrent,
   getDecisions,
   getLatestSummary,
+  generateSummary,
   getPowerBreakdown,
 } from './api/ecoshiftClient.js'
 
@@ -23,7 +23,7 @@ const SCHEMES = {
     '--text':'#16202c','--text2':'#3d5166','--text3':'#8a9bb0',
     '--primary':'#ff9900','--primary-light':'rgba(255,153,0,0.1)',
     '--green':'#1a8a4a','--amber':'#e07a00','--red':'#d13212',
-    '--sb-title':'#3d5166','--sb-sub':'rgba(0,0,0,0.3)',
+    '--sb-title':'#232f3e','--sb-sub':'rgba(0,0,0,0.3)',
     '--sb-section':'rgba(0,0,0,0.22)',
     '--sb-nav':'rgba(0,0,0,0.45)','--sb-nav-hover-bg':'rgba(255,153,0,0.08)',
     '--sb-nav-hover':'#ff9900','--sb-nav-active-bg':'rgba(255,153,0,0.12)',
@@ -108,14 +108,6 @@ function IconSettings() {
     </svg>
   )
 }
-function IconTweaks() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <circle cx="7" cy="7" r="2" />
-      <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.75 2.75l1.06 1.06M10.19 10.19l1.06 1.06M2.75 11.25l1.06-1.06M10.19 3.81l1.06-1.06" />
-    </svg>
-  )
-}
 
 const NAV_ITEMS = [
   { id: 'overview',  label: 'Overview',  Icon: IconOverview  },
@@ -138,6 +130,23 @@ function CloudLogo({ size = 36 }) {
 
 /* ─── helper ─── */
 const REFRESH_MS = 30_000
+
+function nextUtcMidnight(from = new Date()) {
+  return new Date(Date.UTC(
+    from.getUTCFullYear(),
+    from.getUTCMonth(),
+    from.getUTCDate() + 1,
+    0, 0, 0, 0
+  ))
+}
+
+function formatCountdown(ms) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
 
 /* ─── Pages ─── */
 function OverviewPage({ data }) {
@@ -178,7 +187,7 @@ function OverviewPage({ data }) {
         </div>
         <div className="card">
           <div className="card-label">Bedrock Sustainability Report</div>
-          <p style={{ fontStyle: 'italic', lineHeight: 1.7, color: 'var(--text2)', fontSize: 14 }}>
+          <p className="report-narrative report-preview">
             {summary?.narrative || summary?.metrics ? (
               summary.narrative || 'Summary available — see Reports page for full details.'
             ) : 'No daily brief yet…'}
@@ -291,20 +300,45 @@ function TimelinePage({ data }) {
 }
 
 function ReportsPage({ data }) {
-  const { summary } = data
+  const { summary, setSummary } = data
   const [expanded, setExpanded] = useState(false)
+  const [now, setNow] = useState(() => new Date())
+  const [generating, setGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState('')
 
-  if (!summary) {
-    return (
-      <div className="card">
-        <div className="card-label">Bedrock Reports</div>
-        <div className="loader-text">No reports generated yet</div>
-      </div>
-    )
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  async function handleGenerate() {
+    setGenerating(true)
+    setGenerateError('')
+    try {
+      const report = await generateSummary()
+      setSummary(report)
+      setExpanded(true)
+    } catch (e) {
+      setGenerateError(e?.response?.data?.error || e.message || 'Failed to generate report')
+    } finally {
+      setGenerating(false)
+    }
   }
 
-  const m = summary.metrics || {}
-  const date = summary.date || summary.sk || 'Today'
+  const nextReportAt = nextUtcMidnight(now)
+  const countdown = formatCountdown(nextReportAt.getTime() - now.getTime())
+  const nextReportTime = nextReportAt.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  })
+  const reportType = summary?.report_type === 'manual_rolling_24h'
+    ? 'Rolling previous 24 hours'
+    : 'Previous UTC day'
+
+  const m = summary?.metrics || {}
+  const date = summary?.date || summary?.sk || 'No report yet'
   const gco2 = m.gco2_avoided
   const hoursShifted = m.hours_shifted ?? m.vcpu_hours_run
   const cleanPct = m.clean_pct ?? m.clean_share
@@ -312,7 +346,20 @@ function ReportsPage({ data }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="report-card">
+        <div className="report-toolbar">
+          <div className="report-timer">
+            <span>Next daily report</span>
+            <strong>{countdown}</strong>
+            <span>{nextReportTime}</span>
+          </div>
+          <button className="btn-primary" onClick={handleGenerate} disabled={generating}>
+            {generating ? 'Generating...' : 'Generate report'}
+          </button>
+        </div>
+        {generateError && <div className="error-bar">{generateError}</div>}
+
         <div className="report-date">{date}</div>
+        <div className="narrative-byline">{reportType}</div>
         <div className="report-metrics">
           {gco2 != null && (
             <div className="report-metric">
@@ -339,7 +386,9 @@ function ReportsPage({ data }) {
             </div>
           )}
         </div>
-        {summary.narrative && (
+        {!summary ? (
+          <div className="loader-text">No reports generated yet</div>
+        ) : summary.narrative && (
           <>
             <p className="report-narrative" style={{ display: expanded ? 'block' : '-webkit-box',
               WebkitLineClamp: expanded ? undefined : 4,
@@ -359,8 +408,7 @@ function ReportsPage({ data }) {
   )
 }
 
-function SettingsPage({ tweaks, setTweaks, threshold, zone }) {
-  const [localThreshold, setLocalThreshold] = useState(threshold ?? 250)
+function SettingsPage({ tweaks, setTweaks, zone }) {
   const [localZone, setLocalZone] = useState(zone ?? 'US-CAL-CISO')
   const [email, setEmail] = useState('')
   const [refresh, setRefresh] = useState('30')
@@ -413,11 +461,6 @@ function SettingsPage({ tweaks, setTweaks, threshold, zone }) {
               placeholder="you@company.com" />
           </div>
           <div className="field">
-            <label>Green Threshold · <span className="range-value">{localThreshold} gCO₂/kWh</span></label>
-            <input type="range" min="0" max="600" value={localThreshold}
-              onChange={e => setLocalThreshold(Number(e.target.value))} />
-          </div>
-          <div className="field">
             <label>Refresh Interval</label>
             <select value={refresh} onChange={e => setRefresh(e.target.value)}>
               <option value="15">15 seconds</option>
@@ -439,51 +482,12 @@ function SettingsPage({ tweaks, setTweaks, threshold, zone }) {
   )
 }
 
-/* ─── TweaksPanel ─── */
-function TweaksPanel({ tweaks, setTweaks, onClose }) {
-  return (
-    <div className="tweaks-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="tweaks-title">Tweaks</div>
-        <button onClick={onClose} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: 'var(--text3)', fontSize: 16, lineHeight: 1, padding: 2,
-        }}>×</button>
-      </div>
-
-      <div>
-        <div className="tweaks-section-label">Color scheme</div>
-        <div className="tweaks-options">
-          {['forest', 'ocean', 'earth'].map(s => (
-            <button key={s} className={`tweaks-opt-btn ${tweaks.scheme === s ? 'active' : ''}`}
-              onClick={() => setTweaks(t => ({ ...t, scheme: s }))}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <div className="tweaks-section-label">Gauge style</div>
-        <div className="tweaks-options">
-          {['arc', 'ring', 'bar'].map(s => (
-            <button key={s} className={`tweaks-opt-btn ${tweaks.gaugeStyle === s ? 'active' : ''}`}
-              onClick={() => setTweaks(t => ({ ...t, gaugeStyle: s }))}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 /* ─── App ─── */
 export default function App() {
   const [page, setPage] = useState('overview')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [tweaks, setTweaks] = useState({ scheme: 'aws', gaugeStyle: 'arc' })
-  const [showTweaks, setShowTweaks] = useState(false)
+  const [tweaks, setTweaks] = useState({ scheme: 'aws' })
 
   // data
   const [current, setCurrent] = useState(null)
@@ -546,8 +550,8 @@ export default function App() {
 
   const pageData = {
     intensity, threshold, zone, action, targetVcpus, lastCheckedAt, isGreen,
-    decisions, timelineData, summary, powerBreakdown,
-    gaugeStyle: tweaks.gaugeStyle,
+    decisions, timelineData, summary, setSummary, powerBreakdown,
+    gaugeStyle: 'arc',
   }
 
   const PAGE_TITLE = { overview: 'Overview', timeline: 'Timeline', reports: 'Reports', settings: 'Settings' }
@@ -562,7 +566,7 @@ export default function App() {
 
         <div className="sidebar-brand">
           {sidebarCollapsed ? (
-            <CloudLogo size={32} />
+            <CloudLogo size={42} />
           ) : (
             <div className="sidebar-brand-col">
               <div className="brand-name">Nimbus</div>
@@ -608,9 +612,6 @@ export default function App() {
                 ? lastFetch.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : 'Loading…'}
             </div>
-            <button className="toolbar-btn" onClick={() => setShowTweaks(v => !v)}>
-              <IconTweaks /> Tweaks
-            </button>
           </div>
         </div>
 
@@ -622,8 +623,7 @@ export default function App() {
           {page === 'timeline'  && <TimelinePage  data={pageData} />}
           {page === 'reports'   && <ReportsPage   data={pageData} />}
           {page === 'settings'  && (
-            <SettingsPage tweaks={tweaks} setTweaks={setTweaks}
-              threshold={threshold} zone={zone} />
+            <SettingsPage tweaks={tweaks} setTweaks={setTweaks} zone={zone} />
           )}
         </div>
 
@@ -634,14 +634,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Tweaks panel */}
-      {showTweaks && (
-        <TweaksPanel tweaks={tweaks} setTweaks={setTweaks}
-          onClose={() => setShowTweaks(false)} />
-      )}
-
-      {/* Floating chat */}
-      <AskEcoShift />
     </div>
   )
 }
