@@ -42,7 +42,7 @@ def _real_world_equivalent(gco2_avoided: float) -> str:
     miles = gco2_avoided / 404.0
     if gco2_avoided >= 1_000_000:
         tonnes = gco2_avoided / 1_000_000
-        return f"equivalent to ~{tonnes:.1f} tonnes of CO2 — roughly {miles:,.0f} miles not driven"
+        return f"equivalent to about {tonnes:.1f} tonnes of CO2, roughly {miles:,.0f} miles not driven"
     if gco2_avoided >= 1000:
         return f"equivalent to not driving {miles:,.0f} miles in an average gasoline car"
     return f"equivalent to not driving {miles:,.1f} miles in an average gasoline car"

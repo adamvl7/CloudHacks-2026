@@ -13,14 +13,14 @@ _bedrock = boto3.client("bedrock-runtime")
 MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-sonnet-4-6")
 
 PROMPT_TEMPLATE = """You are the sustainability officer for a cloud engineering team.
-Given the following carbon-aware scheduling data for today, write a
-3-paragraph executive summary covering:
+Given the following carbon-aware scheduling data, write a clear report in 2 or 3 short paragraphs covering:
 
 1. What we did (jobs run, hours shifted, scale-up/down count)
 2. Environmental impact (gCO2 avoided, real-world equivalents)
 3. Cost impact and tomorrow's outlook
 
-Be specific with numbers. Be warm but professional. No emoji.
+Be specific with numbers. Be warm but professional. Use plain language for non-technical judges.
+Do not use markdown, bold text, bullet points, emoji, or em dashes. Use commas, periods, or hyphens instead of em dashes.
 
 DATA:
 {metrics_json}

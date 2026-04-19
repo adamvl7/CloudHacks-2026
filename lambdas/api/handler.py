@@ -2,7 +2,7 @@
 
 Routes:
   GET /decisions?hours=24      -> list of decision records
-  GET /summary/latest          -> most recent daily summary (metrics + narrative)
+  GET /summary/latest          -> most recent daily or selected-region summary
   GET /current                 -> latest single decision (current grid state)
   GET /regions                 -> dashboard region viewer options
   GET /grid/current?region=... -> live carbon intensity for selected region
@@ -206,10 +206,16 @@ def get_decisions(hours: int) -> list[dict]:
     return filtered
 
 
-def get_latest_summary() -> dict | None:
+def get_latest_summary(qs: dict | None = None) -> dict | None:
     table = _ddb.Table(DYNAMO_TABLE)
+    region_param = (qs or {}).get("region")
+    if region_param:
+        region = _selected_region(qs)
+        pk = f"summary#{region['region']}"
+    else:
+        pk = "summary"
     resp = table.query(
-        KeyConditionExpression=Key("pk").eq("summary"),
+        KeyConditionExpression=Key("pk").eq(pk),
         ScanIndexForward=False,
         Limit=1,
     )
@@ -233,7 +239,7 @@ def lambda_handler(event, context):
             return _response(200, {"decisions": get_decisions(hours)})
 
         if path == "/summary/latest":
-            summary = get_latest_summary()
+            summary = get_latest_summary(qs)
             if not summary:
                 return _response(404, {"error": "no summaries yet"})
             return _response(200, summary)
