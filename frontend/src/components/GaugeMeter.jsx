@@ -20,7 +20,6 @@ function StatusBadge({ isGreen, intensity }) {
   const color = isGreen ? 'var(--green)' : 'var(--red)'
   const bg    = isGreen ? 'rgba(58,158,100,0.09)' : 'rgba(192,57,43,0.09)'
   const bdCol = isGreen ? 'rgba(58,158,100,0.22)' : 'rgba(192,57,43,0.22)'
-  const label = isGreen ? 'Green · Running' : 'Dirty · Paused'
   return (
     <span style={{
       display:'inline-flex', alignItems:'center', gap:7,
@@ -30,7 +29,7 @@ function StatusBadge({ isGreen, intensity }) {
       letterSpacing:'0.12em', textTransform:'uppercase',
     }}>
       <span style={{width:6,height:6,borderRadius:'50%',background:color,display:'inline-block'}} />
-      {label}
+      {isGreen ? 'Green' : 'Dirty'}
     </span>
   )
 }

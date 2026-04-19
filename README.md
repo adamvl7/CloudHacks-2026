@@ -307,10 +307,20 @@ This queues a job that will execute *only when EcoShift has scaled the compute e
 
 Open the CloudFront URL printed by SAM. You'll see:
 - **Live grid meter** — current gCO₂/kWh for your zone
+- **Region dropdown** — preview live grid conditions for `us-east-1`, `us-east-2`, `us-west-2`, or `us-west-1` without changing the deployed scheduler
 - **Current state** — GREEN (scaled up) or DIRTY (scaled down)
 - **Decision timeline** — last 24h of scaling events overlaid on carbon intensity
 - **Savings card** — cumulative gCO₂ avoided, $ saved
 - **Latest Bedrock summary** — yesterday's narrative report
+
+The dashboard region selector is read-only. It changes the live ElectricityMaps widgets and recommended threshold shown on the dashboard, but it does not move workloads, redeploy AWS resources, or rewrite historical scheduler decisions.
+
+| AWS region | ElectricityMaps zone | Recommended threshold |
+|---|---|---|
+| `us-east-1` (N. Virginia) | `US-MIDA-PJM` | `350 gCO2/kWh` |
+| `us-east-2` (Ohio) | `US-MIDW-MISO` | `380 gCO2/kWh` |
+| `us-west-2` (Oregon) | `US-NW-BPAT` | `120 gCO2/kWh` |
+| `us-west-1` (N. California) | `US-CAL-CISO` | `200 gCO2/kWh` |
 
 ### Trigger a manual daily report (for demo)
 

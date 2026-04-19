@@ -360,6 +360,18 @@ Resources:
             ApiId: !Ref DashboardApi
             Path: /current
             Method: GET
+        GetRegions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /regions
+            Method: GET
+        GetGridCurrent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /grid/current
+            Method: GET
         GetPowerBreakdown:
           Type: HttpApi
           Properties:

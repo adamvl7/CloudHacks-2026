@@ -5,12 +5,18 @@ import SavingsCard from './components/SavingsCard.jsx'
 import BatchStateCard from './components/BatchStateCard.jsx'
 import DecisionCounts from './components/DecisionCounts.jsx'
 import PowerBreakdown from './components/PowerBreakdown.jsx'
+import ForecastStrip from './components/ForecastStrip.jsx'
+import RegionCompareBanner from './components/RegionCompareBanner.jsx'
 import {
   getCurrent,
   getDecisions,
   getLatestSummary,
   generateSummary,
+  getRegions,
+  getGridCurrent,
   getPowerBreakdown,
+  getForecast,
+  getRegionCompare,
 } from './api/ecoshiftClient.js'
 
 /* ─── Color schemes ─── */
@@ -130,6 +136,29 @@ function CloudLogo({ size = 36 }) {
 
 /* ─── helper ─── */
 const REFRESH_MS = 30_000
+const DEFAULT_REGION = 'us-west-2'
+const REGION_STORAGE_KEY = 'ecoshift:selected-region'
+const FALLBACK_REGION_OPTIONS = [
+  { region: 'us-east-1', name: 'N. Virginia', label: 'us-east-1 - N. Virginia', zone: 'US-MIDA-PJM', threshold: 350 },
+  { region: 'us-east-2', name: 'Ohio', label: 'us-east-2 - Ohio', zone: 'US-MIDW-MISO', threshold: 380 },
+  { region: 'us-west-2', name: 'Oregon', label: 'us-west-2 - Oregon', zone: 'US-NW-BPAT', threshold: 120 },
+  { region: 'us-west-1', name: 'N. California', label: 'us-west-1 - N. California', zone: 'US-CAL-CISO', threshold: 200 },
+]
+
+function getInitialRegion() {
+  try {
+    const stored = window.localStorage.getItem(REGION_STORAGE_KEY)
+    if (FALLBACK_REGION_OPTIONS.some(r => r.region === stored)) return stored
+  } catch {
+    // localStorage can be blocked; defaulting keeps the dashboard usable.
+  }
+  return DEFAULT_REGION
+}
+
+function formatRegionOption(region) {
+  if (!region) return 'us-west-2 - Oregon - US-NW-BPAT - 120 gCO2/kWh'
+  return `${region.region} - ${region.name} - ${region.zone} - ${region.threshold} gCO2/kWh`
+}
 
 function nextUtcMidnight(from = new Date()) {
   return new Date(Date.UTC(
@@ -150,16 +179,18 @@ function formatCountdown(ms) {
 
 /* ─── Pages ─── */
 function OverviewPage({ data }) {
-  const { intensity, threshold, zone, action, targetVcpus, lastCheckedAt,
-          isGreen, decisions, timelineData, summary, powerBreakdown,
-          gaugeStyle } = data
+  const { intensity, threshold, zone, selectedRegionOption, action, targetVcpus, lastCheckedAt,
+          decisions, timelineData, summary, powerBreakdown, forecast, regionCompare,
+          schedulerThreshold, gaugeStyle } = data
 
   return (
     <>
+      <RegionCompareBanner data={regionCompare} />
       <div className="grid g4 mb16">
         <div className="card">
           <div className="card-label">Grid Intensity</div>
           <GaugeMeter intensity={intensity} threshold={threshold} gaugeStyle={gaugeStyle} />
+          <div className="region-meta">{formatRegionOption(selectedRegionOption)}</div>
         </div>
         <div className="card">
           <div className="card-label">Batch Status</div>
@@ -176,8 +207,13 @@ function OverviewPage({ data }) {
       </div>
 
       <div className="card mb16">
+        <div className="card-label">Next 24h Forecast - {zone}</div>
+        <ForecastStrip data={forecast} />
+      </div>
+
+      <div className="card mb16">
         <div className="card-label">24h Decision Timeline</div>
-        <TimelineChart data={timelineData} threshold={threshold} />
+        <TimelineChart data={timelineData} threshold={schedulerThreshold} />
       </div>
 
       <div className="grid g2">
@@ -493,7 +529,12 @@ export default function App() {
   const [current, setCurrent] = useState(null)
   const [decisions, setDecisions] = useState([])
   const [summary, setSummary] = useState(null)
+  const [regionOptions, setRegionOptions] = useState(FALLBACK_REGION_OPTIONS)
+  const [selectedRegion, setSelectedRegion] = useState(getInitialRegion)
+  const [gridCurrent, setGridCurrent] = useState(null)
   const [powerBreakdown, setPowerBreakdown] = useState(null)
+  const [forecast, setForecast] = useState(null)
+  const [regionCompare, setRegionCompare] = useState(null)
   const [error, setError] = useState(null)
   const [lastFetch, setLastFetch] = useState(null)
 
@@ -502,22 +543,54 @@ export default function App() {
     applyScheme(tweaks.scheme)
   }, [tweaks.scheme])
 
+  useEffect(() => {
+    let cancelled = false
+    async function loadRegions() {
+      try {
+        const data = await getRegions()
+        if (cancelled || !Array.isArray(data?.regions) || data.regions.length === 0) return
+        setRegionOptions(data.regions)
+        if (!data.regions.some(r => r.region === selectedRegion)) {
+          setSelectedRegion(data.default_region || DEFAULT_REGION)
+        }
+      } catch {
+        // The static fallback exactly mirrors the backend options.
+      }
+    }
+    loadRegions()
+    return () => { cancelled = true }
+  }, [selectedRegion])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(REGION_STORAGE_KEY, selectedRegion)
+    } catch {
+      // Ignore storage failures; the dropdown still works for this session.
+    }
+  }, [selectedRegion])
+
   // data fetching
   useEffect(() => {
     let cancelled = false
     async function load() {
       try {
-        const [c, d, s, pb] = await Promise.all([
+        const [c, d, s, gc, pb, fc, rc] = await Promise.all([
           getCurrent().catch(() => null),
           getDecisions(24).catch(() => []),
           getLatestSummary().catch(() => null),
-          getPowerBreakdown().catch(() => null),
+          getGridCurrent(selectedRegion).catch(() => null),
+          getPowerBreakdown(selectedRegion).catch(() => null),
+          getForecast(selectedRegion).catch(() => null),
+          getRegionCompare(selectedRegion).catch(() => null),
         ])
         if (cancelled) return
         setCurrent(c)
         setDecisions(Array.isArray(d) ? d : [])
         setSummary(s)
+        setGridCurrent(gc)
         setPowerBreakdown(pb)
+        setForecast(fc)
+        setRegionCompare(rc)
         setLastFetch(new Date())
         setError(null)
       } catch (e) {
@@ -527,13 +600,17 @@ export default function App() {
     load()
     const id = setInterval(load, REFRESH_MS)
     return () => { cancelled = true; clearInterval(id) }
-  }, [])
+  }, [selectedRegion])
 
   // derived state
-  const intensity = current?.decision?.carbon_intensity != null
-    ? Number(current.decision.carbon_intensity) : null
-  const threshold = current?.threshold ?? 250
-  const zone = current?.decision?.zone ?? 'US-CAL-CISO'
+  const selectedRegionOption = regionOptions.find(r => r.region === selectedRegion)
+    || FALLBACK_REGION_OPTIONS.find(r => r.region === selectedRegion)
+    || FALLBACK_REGION_OPTIONS.find(r => r.region === DEFAULT_REGION)
+  const intensity = gridCurrent?.carbonIntensity != null
+    ? Number(gridCurrent.carbonIntensity) : null
+  const threshold = gridCurrent?.threshold ?? selectedRegionOption?.threshold ?? 250
+  const zone = gridCurrent?.zone ?? selectedRegionOption?.zone ?? 'US-NW-BPAT'
+  const schedulerThreshold = current?.threshold ?? 250
   const action = current?.decision?.action
   const targetVcpus = current?.decision?.batch_target_vcpus
   const lastCheckedAt = current?.decision?.sk ? new Date(current.decision.sk) : null
@@ -550,7 +627,8 @@ export default function App() {
 
   const pageData = {
     intensity, threshold, zone, action, targetVcpus, lastCheckedAt, isGreen,
-    decisions, timelineData, summary, setSummary, powerBreakdown,
+    decisions, timelineData, summary, setSummary, powerBreakdown, forecast, regionCompare,
+    schedulerThreshold, selectedRegionOption,
     gaugeStyle: 'arc',
   }
 
@@ -594,7 +672,7 @@ export default function App() {
             <span className="sidebar-dot"
               style={{ background: isGreen ? 'var(--green)' : 'var(--red)' }} />
             {!sidebarCollapsed && (
-              <span>{isGreen ? 'Green · Running' : 'Dirty · Paused'}</span>
+              <span>{isGreen ? 'Green preview' : 'Dirty preview'}</span>
             )}
           </div>
         </div>
@@ -606,6 +684,20 @@ export default function App() {
         <div className="page-header">
           <div className="page-title">{PAGE_TITLE[page]}</div>
           <div className="page-header-right">
+            <label className="region-select-wrap">
+              <span>Region</span>
+              <select
+                value={selectedRegion}
+                onChange={e => setSelectedRegion(e.target.value)}
+                aria-label="Select dashboard region"
+              >
+                {regionOptions.map(region => (
+                  <option key={region.region} value={region.region}>
+                    {formatRegionOption(region)}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div className="live-badge">
               <span className="live-dot" />
               {lastFetch

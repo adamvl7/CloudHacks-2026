@@ -4,9 +4,11 @@ Routes:
   GET /decisions?hours=24      -> list of decision records
   GET /summary/latest          -> most recent daily summary (metrics + narrative)
   GET /current                 -> latest single decision (current grid state)
+  GET /regions                 -> dashboard region viewer options
+  GET /grid/current?region=... -> live carbon intensity for selected region
   GET /power-breakdown         -> live energy mix from ElectricityMaps
-  GET /forecast                -> 24h carbon-intensity forecast for GRID_ZONE
-  GET /region-compare          -> current intensity across a preset of US zones
+  GET /forecast                -> 24h carbon-intensity forecast for selected region
+  GET /region-compare          -> current intensity across configured regions
 """
 from __future__ import annotations
 
@@ -31,6 +33,38 @@ ELECTRICITYMAPS_SECRET_NAME = os.environ.get("ELECTRICITYMAPS_SECRET_NAME", "eco
 
 _ddb = boto3.resource("dynamodb")
 
+DEFAULT_REGION = "us-west-2"
+REGION_OPTIONS = {
+    "us-east-1": {
+        "region": "us-east-1",
+        "name": "N. Virginia",
+        "label": "us-east-1 · N. Virginia",
+        "zone": "US-MIDA-PJM",
+        "threshold": 350,
+    },
+    "us-east-2": {
+        "region": "us-east-2",
+        "name": "Ohio",
+        "label": "us-east-2 · Ohio",
+        "zone": "US-MIDW-MISO",
+        "threshold": 380,
+    },
+    "us-west-2": {
+        "region": "us-west-2",
+        "name": "Oregon",
+        "label": "us-west-2 · Oregon",
+        "zone": "US-NW-BPAT",
+        "threshold": 120,
+    },
+    "us-west-1": {
+        "region": "us-west-1",
+        "name": "N. California",
+        "label": "us-west-1 · N. California",
+        "zone": "US-CAL-CISO",
+        "threshold": 200,
+    },
+}
+
 
 @lru_cache(maxsize=1)
 def _get_api_key() -> str:
@@ -39,21 +73,17 @@ def _get_api_key() -> str:
     return resp["SecretString"].strip()
 
 
-def get_power_breakdown() -> dict:
-    api_key = _get_api_key()
-    url = f"https://api.electricitymap.org/v3/power-breakdown/latest?zone={GRID_ZONE}"
-    req = urllib.request.Request(url, headers={"auth-token": api_key})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        return json.loads(resp.read())
+def _region_options_list() -> list[dict]:
+    return [dict(option) for option in REGION_OPTIONS.values()]
 
 
-REGION_PRESET = [
-    ("US-CAL-CISO", "us-west-1 \u00b7 California"),
-    ("US-NW-PACW", "us-west-2 \u00b7 Oregon"),
-    ("US-TEX-ERCO", "us-south-1 \u00b7 Texas"),
-    ("US-MIDA-PJM", "us-east-1 \u00b7 Virginia"),
-    ("US-NE-ISNE", "us-east-2 \u00b7 New England"),
-]
+def _selected_region(qs: dict | None) -> dict:
+    requested = ((qs or {}).get("region") or DEFAULT_REGION).strip()
+    if requested not in REGION_OPTIONS:
+        raise ValueError(
+            f"unsupported region '{requested}'. Valid regions: {', '.join(REGION_OPTIONS)}"
+        )
+    return REGION_OPTIONS[requested]
 
 
 def _em_get(path: str) -> dict:
@@ -64,8 +94,23 @@ def _em_get(path: str) -> dict:
         return json.loads(resp.read())
 
 
-def get_forecast() -> dict:
-    data = _em_get(f"/carbon-intensity/forecast?zone={GRID_ZONE}")
+def get_grid_current(region: dict) -> dict:
+    data = _em_get(f"/carbon-intensity/latest?zone={region['zone']}")
+    ci = data.get("carbonIntensity")
+    return {
+        **region,
+        "carbonIntensity": float(ci) if ci is not None else None,
+        "datetime": data.get("datetime") or data.get("updatedAt"),
+    }
+
+
+def get_power_breakdown(region: dict) -> dict:
+    data = _em_get(f"/power-breakdown/latest?zone={region['zone']}")
+    return {**data, **region}
+
+
+def get_forecast(region: dict) -> dict:
+    data = _em_get(f"/carbon-intensity/forecast?zone={region['zone']}")
     raw = data.get("forecast") or data.get("data") or []
     forecast = []
     for entry in raw[:24]:
@@ -74,26 +119,29 @@ def get_forecast() -> dict:
         if dt is None or ci is None:
             continue
         forecast.append({"datetime": dt, "carbonIntensity": float(ci)})
-    return {"zone": GRID_ZONE, "threshold": THRESHOLD, "forecast": forecast}
+    return {**region, "forecast": forecast}
 
 
-def get_region_compare() -> dict:
+def get_region_compare(selected_region: dict) -> dict:
     regions = []
-    for zone, label in REGION_PRESET:
+    for region in REGION_OPTIONS.values():
         try:
-            data = _em_get(f"/carbon-intensity/latest?zone={zone}")
+            data = _em_get(f"/carbon-intensity/latest?zone={region['zone']}")
             ci = data.get("carbonIntensity")
             if ci is None:
                 continue
             regions.append({
-                "zone": zone,
+                **region,
                 "carbonIntensity": float(ci),
-                "label": label,
             })
         except Exception as e:
-            log.warning("region-compare: skipping %s (%s)", zone, e)
+            log.warning("region-compare: skipping %s (%s)", region["zone"], e)
             continue
-    return {"current_zone": GRID_ZONE, "regions": regions}
+    return {
+        "current_region": selected_region["region"],
+        "current_zone": selected_region["zone"],
+        "regions": regions,
+    }
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -173,16 +221,31 @@ def lambda_handler(event, context):
                 "threshold": THRESHOLD,
             })
 
+        if path == "/regions":
+            return _response(200, {
+                "default_region": DEFAULT_REGION,
+                "regions": _region_options_list(),
+            })
+
+        if path == "/grid/current":
+            region = _selected_region(qs)
+            return _response(200, get_grid_current(region))
+
         if path == "/power-breakdown":
-            return _response(200, get_power_breakdown())
+            region = _selected_region(qs)
+            return _response(200, get_power_breakdown(region))
 
         if path == "/forecast":
-            return _response(200, get_forecast())
+            region = _selected_region(qs)
+            return _response(200, get_forecast(region))
 
         if path == "/region-compare":
-            return _response(200, get_region_compare())
+            region = _selected_region(qs)
+            return _response(200, get_region_compare(region))
 
         return _response(404, {"error": f"unknown path: {path}"})
+    except ValueError as e:
+        return _response(400, {"error": str(e)})
     except Exception as e:
         log.exception("api error")
         return _response(500, {"error": str(e)})

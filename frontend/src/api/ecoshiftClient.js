@@ -29,27 +29,37 @@ export async function generateSummary() {
   return data
 }
 
-export async function getPowerBreakdown() {
+export async function getRegions() {
+  const { data } = await client.get('/regions')
+  return data
+}
+
+export async function getGridCurrent(region) {
+  const { data } = await client.get('/grid/current', { params: { region } })
+  return data
+}
+
+export async function getPowerBreakdown(region) {
   try {
-    const { data } = await client.get('/power-breakdown')
+    const { data } = await client.get('/power-breakdown', { params: { region } })
     return data
   } catch {
     return null
   }
 }
 
-export async function getForecast() {
+export async function getForecast(region) {
   try {
-    const { data } = await client.get('/forecast')
+    const { data } = await client.get('/forecast', { params: { region } })
     return data // { zone, threshold, forecast: [{ datetime, carbonIntensity }] }
   } catch {
     return null
   }
 }
 
-export async function getRegionCompare() {
+export async function getRegionCompare(region) {
   try {
-    const { data } = await client.get('/region-compare')
+    const { data } = await client.get('/region-compare', { params: { region } })
     return data // { current_zone, regions: [{ zone, carbonIntensity, label }] }
   } catch {
     return null
