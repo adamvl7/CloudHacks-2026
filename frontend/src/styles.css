@@ -438,6 +438,79 @@ body {
   color: var(--primary);
   border: 1px solid var(--border);
 }
+.bsc-tag-btn {
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.13s, transform 0.08s;
+}
+.bsc-tag-btn:hover {
+  background: var(--primary);
+  color: #fff;
+}
+.bsc-tag-btn:active {
+  transform: scale(0.97);
+}
+.wl-tag-wrap {
+  position: relative;
+}
+.wl-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  width: 240px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+  padding: 12px 14px;
+  font-family: 'DM Sans', sans-serif;
+}
+.wl-pop-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.wl-pop-head strong {
+  flex: 1;
+  font-weight: 600;
+}
+.wl-pop-close {
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.wl-pop-close:hover {
+  color: var(--text);
+}
+.wl-pop-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wl-pop-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+}
+.wl-pop-row span {
+  color: var(--text3);
+}
+.wl-pop-row strong {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---------- DecisionCounts ---------- */
 .dc-row {
