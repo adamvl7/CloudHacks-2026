@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 
 export default function RegionCompareBanner({ data }) {
+  const [toast, setToast] = useState(null)
+
   const best = useMemo(() => {
     if (!data?.current_zone || !Array.isArray(data?.regions)) return null
     const current = data.regions.find(r => r.zone === data.current_zone)
@@ -24,12 +26,24 @@ export default function RegionCompareBanner({ data }) {
 
   const label = best.label || best.zone
 
+  function handleShift() {
+    setToast(`Recommendation logged — pending review`)
+    setTimeout(() => setToast(null), 2600)
+  }
+
   return (
-    <div className="region-banner">
-      <span className="region-banner-arrow" aria-hidden="true" />
-      <span>
-        <strong>{label}</strong> is <strong>{Math.round(best.pct)}%</strong> cleaner than <strong>{data.current_zone}</strong> right now — shift queue?
-      </span>
-    </div>
+    <>
+      <div className="region-banner">
+        <span className="region-banner-tag">recommendation</span>
+        <span className="region-banner-arrow" aria-hidden="true" />
+        <span>
+          <strong>{label}</strong> is <strong>{Math.round(best.pct)}%</strong> cleaner than <strong>{data.current_zone}</strong> right now —{' '}
+          <button className="region-banner-cta" onClick={handleShift}>
+            shift queue?
+          </button>
+        </span>
+      </div>
+      {toast && <div className="toast">{toast}</div>}
+    </>
   )
 }
