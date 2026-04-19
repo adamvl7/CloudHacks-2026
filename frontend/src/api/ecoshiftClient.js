@@ -14,9 +14,9 @@ export async function getDecisions(hours = 24) {
   return data.decisions || []
 }
 
-export async function getLatestSummary() {
+export async function getLatestSummary(region) {
   try {
-    const { data } = await client.get('/summary/latest')
+    const { data } = await client.get('/summary/latest', { params: region ? { region } : {} })
     return data
   } catch (err) {
     if (err.response?.status === 404) return null
@@ -24,8 +24,11 @@ export async function getLatestSummary() {
   }
 }
 
-export async function generateSummary() {
-  const { data } = await client.post('/summary/generate', {}, { timeout: 60_000 })
+export async function generateSummary(region) {
+  const { data } = await client.post('/summary/generate', {}, {
+    params: region ? { region } : {},
+    timeout: 60_000,
+  })
   return data
 }
 
