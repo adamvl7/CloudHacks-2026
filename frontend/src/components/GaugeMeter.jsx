@@ -49,9 +49,8 @@ function ArcGauge({ pct, color, value, threshold, intensity }) {
     const a0 = Math.PI * s, a1 = Math.PI * e
     const x0 = cx - r * Math.cos(a0), y0 = cy - r * Math.sin(a0)
     const x1 = cx - r * Math.cos(a1), y1 = cy - r * Math.sin(a1)
-    const large = (e - s) > 0.5 ? 1 : 0
     return (
-      <path d={`M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`}
+      <path d={`M ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1}`}
         stroke={stroke} strokeWidth={sw} fill="none" strokeLinecap="butt" />
     )
   }
