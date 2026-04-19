@@ -1,4 +1,4 @@
-# 🌱 EcoShift Workload Scheduler
+# 🌱 Nimbus Workload Scheduler
 
 > **A carbon-aware serverless auto-scaler that slashes the Scope 2 emissions of cloud workloads by shifting compute to when the grid is green.**
 
