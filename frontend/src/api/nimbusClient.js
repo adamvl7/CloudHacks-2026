@@ -24,6 +24,26 @@ export async function getLatestSummary(region) {
   }
 }
 
+export async function getAllSummaries(region) {
+  try {
+    const { data } = await client.get('/summaries', { params: region ? { region } : {} })
+    if (Array.isArray(data)) return data
+    if (Array.isArray(data?.summaries)) return data.summaries
+    if (Array.isArray(data?.reports)) return data.reports
+    return []
+  } catch (err) {
+    if (err.response?.status === 404) {
+      try {
+        const latest = await getLatestSummary(region)
+        return latest ? [latest] : []
+      } catch {
+        return []
+      }
+    }
+    throw err
+  }
+}
+
 export async function generateSummary(region) {
   const { data } = await client.post('/summary/generate', {}, {
     params: region ? { region } : {},

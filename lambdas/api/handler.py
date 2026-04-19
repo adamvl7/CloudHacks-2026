@@ -3,6 +3,7 @@
 Routes:
   GET /decisions?hours=24      -> list of decision records
   GET /summary/latest          -> most recent daily or selected-region summary
+  GET /summaries               -> 20 most recent summaries across regions (desc by timestamp)
   GET /current                 -> latest single decision (current grid state)
   GET /regions                 -> dashboard region viewer options
   GET /grid/current?region=... -> live carbon intensity for selected region
@@ -206,21 +207,77 @@ def get_decisions(hours: int) -> list[dict]:
     return filtered
 
 
-def get_latest_summary(qs: dict | None = None) -> dict | None:
+def _query_latest_for_pk(pk: str, limit: int = 1) -> list[dict]:
     table = _ddb.Table(DYNAMO_TABLE)
-    region_param = (qs or {}).get("region")
-    if region_param:
-        region = _selected_region(qs)
-        pk = f"summary#{region['region']}"
-    else:
-        pk = "summary"
     resp = table.query(
         KeyConditionExpression=Key("pk").eq(pk),
         ScanIndexForward=False,
-        Limit=1,
+        Limit=limit,
     )
-    items = resp.get("Items", [])
-    return items[0] if items else None
+    return resp.get("Items", [])
+
+
+def get_latest_summary(qs: dict | None = None) -> dict | None:
+    region_param = (qs or {}).get("region")
+    if region_param:
+        region = _selected_region(qs)
+        items = _query_latest_for_pk(f"summary#{region['region']}", 1)
+        return items[0] if items else None
+
+    # No region filter: pick the most recent across per-region pks + legacy pk.
+    candidates: list[dict] = []
+    for r in REGION_OPTIONS:
+        candidates.extend(_query_latest_for_pk(f"summary#{r}", 1))
+    candidates.extend(_query_latest_for_pk("summary", 1))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda it: it.get("sk") or it.get("generated_at") or "", reverse=True)
+    return candidates[0]
+
+
+def list_summaries(qs: dict | None = None, limit: int = 20) -> list[dict]:
+    region_param = (qs or {}).get("region")
+    if region_param:
+        region = _selected_region(qs)
+        pks = [f"summary#{region['region']}"]
+    else:
+        pks = [f"summary#{r}" for r in REGION_OPTIONS]
+        pks.append("summary")
+
+    items: list[dict] = []
+    for pk in pks:
+        items.extend(_query_latest_for_pk(pk, limit))
+    items.sort(key=lambda it: it.get("generated_at") or it.get("sk") or it.get("date") or "", reverse=True)
+
+    # Deduplicate: keep only the most recent record per (region, date) pair.
+    seen: set = set()
+    out: list[dict] = []
+    for it in items:
+        region = it.get("region") or "unknown"
+        date = it.get("date") or (it.get("sk") or "")[:10]
+        key = (region, date)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            "region": region,
+            "date": date,
+            "sk": it.get("sk"),
+            "timestamp": it.get("generated_at") or it.get("sk") or date,
+            "generated_at": it.get("generated_at"),
+            "report_type": it.get("report_type"),
+            "window_start": it.get("window_start"),
+            "window_end": it.get("window_end"),
+            "narrative": it.get("narrative"),
+            "metrics": it.get("metrics"),
+            "zone": it.get("zone"),
+            "region_name": it.get("region_name"),
+            "threshold": it.get("threshold"),
+            "archive": it.get("archive"),
+        })
+        if len(out) >= limit:
+            break
+    return out
 
 
 def get_current() -> dict | None:
@@ -243,6 +300,14 @@ def lambda_handler(event, context):
             if not summary:
                 return _response(404, {"error": "no summaries yet"})
             return _response(200, summary)
+
+        if path == "/summaries":
+            limit_raw = qs.get("limit", "20")
+            try:
+                limit = max(1, min(int(limit_raw), 100))
+            except ValueError:
+                limit = 20
+            return _response(200, {"summaries": list_summaries(qs, limit)})
 
         if path == "/current":
             current = get_current()

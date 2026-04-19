@@ -9,6 +9,7 @@ import ForecastStrip from './components/ForecastStrip.jsx'
 import RegionCompareBanner from './components/RegionCompareBanner.jsx'
 import {
   getLatestSummary,
+  getAllSummaries,
   generateSummary,
   getRegions,
   getGridCurrent,
@@ -180,6 +181,31 @@ function nextUtcMidnight(from = new Date()) {
   ))
 }
 
+function nextTenMinuteMark(from = new Date()) {
+  const step = 10 * 60 * 1000
+  return new Date(Math.ceil((from.getTime() + 1) / step) * step)
+}
+
+function formatReportTimestamp(input) {
+  if (!input) return null
+  const d = new Date(input)
+  if (Number.isNaN(d.getTime())) return String(input)
+  const datePart = d.toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles',
+  })
+  const timePart = d.toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Los_Angeles',
+  })
+  return `${datePart} at ${timePart} PST`
+}
+
+function formatReportWindow(start, end) {
+  const startLabel = formatReportTimestamp(start)
+  const endLabel = formatReportTimestamp(end)
+  if (!startLabel || !endLabel) return null
+  return `Data window: ${startLabel} to ${endLabel}`
+}
+
 function formatCountdown(ms) {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
   const hours = Math.floor(totalSeconds / 3600)
@@ -205,6 +231,12 @@ function reportParagraphs(text = '') {
   const cleaned = cleanReportText(text)
   return cleaned
     .split(/\n{2,}/)
+    .map(part => part
+      .split(/(?<=[.!?])\s+/)
+      .filter(sentence => !/(\$|money|cost|usd|dollar|carbon-adjusted compute cost)/i.test(sentence))
+      .join(' ')
+      .trim()
+    )
     .map(part => part.trim())
     .filter(Boolean)
 }
@@ -215,11 +247,38 @@ function reportSummaryText(summary, selectedRegionOption) {
       ? 'A regional report is available. Open the Reports page for the full details.'
       : `No regional report yet for ${selectedRegionOption?.region || DEFAULT_REGION}. Generate one from the Reports page.`
   }
-  const cleaned = cleanReportText(summary.narrative).replace(/\n+/g, ' ')
+  const cleaned = reportParagraphs(summary.narrative).join(' ')
   const sentences = cleaned.match(/[^.!?]+[.!?]+/g) || [cleaned]
-  const brief = sentences.slice(0, 2).join(' ').trim()
-  if (brief.length <= 360) return brief
-  return `${brief.slice(0, 357).trim()}...`
+  let brief = ''
+  for (const s of sentences) {
+    const next = brief ? `${brief} ${s.trim()}` : s.trim()
+    if (next.length > 600 && brief) break
+    brief = next
+    if (brief.length >= 600) break
+  }
+  brief = brief.trim() || cleaned
+  if (brief.length <= 600) return brief
+  return `${brief.slice(0, 597).trim()}...`
+}
+
+function getReportMetrics(summary) {
+  const m = summary?.metrics || {}
+  const cleanPct = m.clean_pct ?? m.clean_share ?? (
+    m.ticks ? (Number(m.green_ticks || 0) / Number(m.ticks)) * 100 : null
+  )
+  const cleanPctRounded = cleanPct != null ? Math.round(Number(cleanPct)) : null
+  const savedPct = m.saved_pct ?? m.paused_pct ?? (
+    m.ticks ? (Number(m.dirty_ticks || 0) / Number(m.ticks)) * 100 : null
+  )
+  const savedPctRounded = savedPct != null ? Math.round(Number(savedPct)) : null
+  const percentSavedFormatted = savedPctRounded != null ? `${savedPctRounded}% saved` : null
+  return {
+    gco2: m.gco2_avoided,
+    hoursShifted: m.vcpu_hours_paused ?? m.hours_shifted ?? m.vcpu_hours_run,
+    cleanPct: cleanPctRounded,
+    savedPct: savedPctRounded,
+    percentSavedFormatted,
+  }
 }
 
 /* ─── Pages ─── */
@@ -268,6 +327,24 @@ function OverviewPage({ data }) {
         </div>
         <div className="card">
           <div className="card-label">Regional Report Summary</div>
+          {summary && (() => {
+            const stats = getReportMetrics(summary)
+            const parts = []
+            parts.push(selectedRegionOption ? formatRegionOption(selectedRegionOption) : (summary?.region || ''))
+            if (stats.percentSavedFormatted) parts.push(stats.percentSavedFormatted)
+            if (stats.cleanPct != null) parts.push(`${stats.cleanPct}% carbon-free`)
+            if (stats.gco2 != null) {
+              const gco2Label = stats.gco2 >= 1000
+                ? `${(stats.gco2 / 1000).toFixed(2)} kg CO2 avoided`
+                : `${Math.round(stats.gco2)} g CO2 avoided`
+              parts.push(gco2Label)
+            }
+            return parts.length > 1 ? (
+              <div className="report-stats-strip">
+                {parts.filter(Boolean).join(' · ')}
+              </div>
+            ) : null
+          })()}
           <p className="report-narrative report-preview">
             {reportSummaryText(summary, selectedRegionOption)}
           </p>
@@ -413,11 +490,99 @@ function TimelinePage({ data }) {
   )
 }
 
+function regionLabelFromReport(report, regionOptions) {
+  const regionId = report?.region || report?.metrics?.region
+  const match = regionOptions.find(r => r.region === regionId)
+  if (match) {
+    return `${match.region} · ${match.name} · ${match.zone}`
+  }
+  const zone = report?.zone || report?.metrics?.zone
+  if (regionId && zone) return `${regionId} · ${zone}`
+  if (regionId) return regionId
+  if (zone) return zone
+  return 'Regional report'
+}
+
+function ReportCard({ report, regionOptions }) {
+  const stats = getReportMetrics(report)
+  const paragraphs = reportParagraphs(report?.narrative || '')
+  const reportRegion = report?.region || report?.metrics?.region
+  const reportType = report?.report_type === 'manual_rolling_24h'
+    ? 'Rolling previous 24 hours'
+    : report?.report_type === 'regional_rolling_24h'
+    ? 'Selected region rolling previous 24 hours'
+    : reportRegion
+    ? 'Selected region rolling previous 24 hours'
+    : 'Previous UTC day'
+  const regionLabel = regionLabelFromReport(report, regionOptions)
+  const timestamp = report?.window_end || report?.generated_at || report?.timestamp || report?.sk || report?.date
+  const formattedTimestamp = formatReportTimestamp(timestamp)
+  const reportWindow = formatReportWindow(report?.window_start, report?.window_end)
+  const headlinePercent = stats.percentSavedFormatted
+    || (stats.cleanPct != null ? `${stats.cleanPct}% saved` : null)
+
+  return (
+    <div className="report-card">
+      <div className="report-card-header">
+        <div className="report-region-label">{regionLabel}</div>
+        {formattedTimestamp && (
+          <div className="report-date">{formattedTimestamp}</div>
+        )}
+      </div>
+      {headlinePercent && (
+        <div className="report-headline-money">{headlinePercent}</div>
+      )}
+      {reportWindow && (
+        <div className="report-window">{reportWindow}</div>
+      )}
+      <div className="narrative-byline">{reportType}</div>
+      <div className="report-metrics">
+        {stats.gco2 != null && (
+          <div className="report-metric">
+            <div className="report-metric-val">
+              {stats.gco2 >= 1000 ? `${(stats.gco2 / 1000).toFixed(2)} kg` : `${Math.round(stats.gco2)} g`}
+            </div>
+            <div className="report-metric-key">CO2 avoided</div>
+          </div>
+        )}
+        {stats.hoursShifted != null && (
+          <div className="report-metric">
+            <div className="report-metric-val">
+              {typeof stats.hoursShifted === 'number' ? stats.hoursShifted.toFixed(1) : stats.hoursShifted}
+            </div>
+            <div className="report-metric-key">vCPU-hours shifted</div>
+          </div>
+        )}
+        {stats.cleanPct != null && (
+          <div className="report-metric">
+            <div className="report-metric-val" style={{ color: 'var(--green)' }}>
+              {stats.cleanPct}%
+            </div>
+            <div className="report-metric-key">clean share</div>
+          </div>
+        )}
+      </div>
+      {paragraphs.length > 0 ? (
+        <div className="report-narrative report-full">
+          {paragraphs.map((paragraph, index) => (
+            <p key={index}>{paragraph}</p>
+          ))}
+        </div>
+      ) : (
+        <div className="loader-text">No narrative available for this report.</div>
+      )}
+      <div className="narrative-byline">Generated by Amazon Bedrock - Claude Sonnet 4</div>
+    </div>
+  )
+}
+
 function ReportsPage({ data }) {
-  const { summary, setSummary, selectedRegionOption } = data
+  const { summary, setSummary, selectedRegionOption, regionOptions, reports, setReports, reportsError } = data
   const [now, setNow] = useState(() => new Date())
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState('')
+  const selectedRegion = selectedRegionOption?.region || DEFAULT_REGION
+  const selectedRegionLabel = selectedRegionOption ? formatRegionOption(selectedRegionOption) : selectedRegion
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000)
@@ -428,8 +593,11 @@ function ReportsPage({ data }) {
     setGenerating(true)
     setGenerateError('')
     try {
-      const report = await generateSummary(selectedRegionOption?.region || DEFAULT_REGION)
+      const report = await generateSummary(selectedRegion)
       setSummary(report)
+      setReports([report])
+      const fresh = await getAllSummaries(selectedRegion).catch(() => null)
+      if (Array.isArray(fresh)) setReports(fresh)
     } catch (e) {
       setGenerateError(e?.response?.data?.error || e.message || 'Failed to generate report')
     } finally {
@@ -438,84 +606,49 @@ function ReportsPage({ data }) {
   }
 
   const nextReportAt = nextUtcMidnight(now)
-  const countdown = formatCountdown(nextReportAt.getTime() - now.getTime())
-  const nextReportTime = nextReportAt.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC',
-    timeZoneName: 'short',
-  })
-  const reportType = summary?.report_type === 'manual_rolling_24h'
-    ? 'Rolling previous 24 hours'
-    : summary?.report_type === 'regional_rolling_24h'
-    ? 'Selected region rolling previous 24 hours'
-    : 'Previous UTC day'
+  const msUntilNext = nextReportAt.getTime() - now.getTime()
+  const countdown = formatCountdown(msUntilNext)
 
-  const m = summary?.metrics || {}
-  const date = summary?.date || summary?.sk || 'No report yet'
-  const gco2 = m.gco2_avoided
-  const hoursShifted = m.vcpu_hours_paused ?? m.hours_shifted ?? m.vcpu_hours_run
-  const cleanPct = m.clean_pct ?? m.clean_share ?? (
-    m.ticks ? (Number(m.green_ticks || 0) / Number(m.ticks)) * 100 : null
+  const effectiveReports = (
+    Array.isArray(reports) && reports.length > 0
+      ? reports.filter(r => (r.region || r.metrics?.region) === selectedRegion)
+      : ((summary?.region || summary?.metrics?.region) === selectedRegion ? [summary] : [])
   )
-  const paragraphs = reportParagraphs(summary?.narrative || '')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="report-card">
-        <div className="report-toolbar">
-          <div className="report-timer">
-            <span>Next daily report</span>
-            <strong>{countdown}</strong>
-            <span>{nextReportTime}</span>
-          </div>
-          <button className="btn-primary" onClick={handleGenerate} disabled={generating}>
-            {generating ? 'Generating...' : 'Generate report'}
-          </button>
-        </div>
-        {generateError && <div className="error-bar">{generateError}</div>}
+      <div className="reports-toolbar">
+        <button className="btn-primary" onClick={handleGenerate} disabled={generating}>
+          {generating ? 'Generating...' : 'Generate report'}
+        </button>
+      </div>
+      {generateError && <div className="error-bar">{generateError}</div>}
+      {reportsError && effectiveReports.length === 0 && (
+        <div className="error-bar">Reports list unavailable: {reportsError}</div>
+      )}
 
-        <div className="report-date">{date}</div>
-        <div className="region-meta" style={{ textAlign: 'left' }}>{formatRegionOption(selectedRegionOption)}</div>
-        <div className="narrative-byline">{reportType}</div>
-        <div className="report-metrics">
-          {gco2 != null && (
-            <div className="report-metric">
-              <div className="report-metric-val">
-                {gco2 >= 1000 ? `${(gco2 / 1000).toFixed(2)} kg` : `${Math.round(gco2)} g`}
-              </div>
-              <div className="report-metric-key">CO₂ avoided</div>
-            </div>
-          )}
-          {hoursShifted != null && (
-            <div className="report-metric">
-              <div className="report-metric-val">
-                {typeof hoursShifted === 'number' ? hoursShifted.toFixed(1) : hoursShifted}
-              </div>
-              <div className="report-metric-key">vCPU-hours shifted</div>
-            </div>
-          )}
-          {cleanPct != null && (
-            <div className="report-metric">
-              <div className="report-metric-val" style={{ color: 'var(--green)' }}>
-                {Math.round(cleanPct)}%
-              </div>
-              <div className="report-metric-key">clean share</div>
-            </div>
-          )}
-        </div>
-        {!summary ? (
+      {effectiveReports.length === 0 ? (
+        <div className="report-card">
           <div className="loader-text">
-            No regional report yet. Generate one for {selectedRegionOption?.region || DEFAULT_REGION}.
+            No report yet for {selectedRegionLabel}. Click Generate report to create one from the previous 24 hours.
           </div>
-        ) : paragraphs.length > 0 && (
-          <div className="report-narrative report-full">
-            {paragraphs.map((paragraph, index) => (
-              <p key={index}>{paragraph}</p>
-            ))}
-          </div>
-        )}
-        <div className="narrative-byline">Generated by Amazon Bedrock - Claude Sonnet 4</div>
+        </div>
+      ) : (
+        effectiveReports.map((report, idx) => (
+          <ReportCard
+            key={`${report?.region || 'report'}-${report?.sk || report?.date || idx}`}
+            report={report}
+            regionOptions={regionOptions}
+          />
+        ))
+      )}
+
+      <div style={{
+        textAlign: 'center', marginTop: 24, padding: '10px 0',
+        fontFamily: 'DM Mono, monospace', fontSize: 11,
+        color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase',
+      }}>
+        Next report in {countdown}
       </div>
     </div>
   )
@@ -611,6 +744,8 @@ export default function App() {
   const [powerBreakdown, setPowerBreakdown] = useState(null)
   const [forecast, setForecast] = useState(null)
   const [regionCompare, setRegionCompare] = useState(null)
+  const [reports, setReports] = useState([])
+  const [reportsError, setReportsError] = useState(null)
   const [error, setError] = useState(null)
   const [lastFetch, setLastFetch] = useState(null)
 
@@ -650,13 +785,14 @@ export default function App() {
     let cancelled = false
     async function load() {
       try {
-        const [s, gc, gh, pb, fc, rc] = await Promise.all([
+        const [s, gc, gh, pb, fc, rc, rs] = await Promise.all([
           getLatestSummary(selectedRegion).catch(() => null),
           getGridCurrent(selectedRegion).catch(() => null),
           getGridHistory(selectedRegion).catch(() => null),
           getPowerBreakdown(selectedRegion).catch(() => null),
           getForecast(selectedRegion).catch(() => null),
           getRegionCompare(selectedRegion).catch(() => null),
+          getAllSummaries(selectedRegion).catch(err => ({ __error: err?.message || 'unavailable' })),
         ])
         if (cancelled) return
         setSummary(s)
@@ -665,6 +801,16 @@ export default function App() {
         setPowerBreakdown(pb)
         setForecast(fc)
         setRegionCompare(rc)
+        if (Array.isArray(rs)) {
+          setReports(rs)
+          setReportsError(null)
+        } else if (rs && rs.__error) {
+          setReports([])
+          setReportsError(rs.__error)
+        } else {
+          setReports([])
+          setReportsError(null)
+        }
         setLastFetch(new Date())
         setError(null)
       } catch (e) {
@@ -708,7 +854,7 @@ export default function App() {
   const pageData = {
     intensity, threshold, zone, action, targetVcpus, lastCheckedAt, isGreen,
     decisions: regionalDecisions, timelineData, summary, setSummary, powerBreakdown, forecast, regionCompare,
-    selectedRegionOption,
+    selectedRegionOption, regionOptions, reports, setReports, reportsError,
     gaugeStyle: 'arc',
   }
 

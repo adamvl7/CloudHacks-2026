@@ -8,12 +8,15 @@ Model (from README 'Measuring Impact'):
 """
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass
 from typing import Iterable
 
 AVG_WATTS_PER_VCPU = 8.0       # AWS sustainability disclosures, general-purpose compute.
 TICK_HOURS = 0.25              # 15-minute scheduler cadence.
 USD_PER_VCPU_HOUR = 0.04048    # Fargate us-west-2 pricing, approximate.
+SAVINGS_RATIO = 0.30           # Assumed discount for compute shifted into clean grid windows.
+TICK_MINUTES_GREEN = 0.5       # Approx. coverage per scale_up tick (30s resolution).
 
 
 @dataclass
@@ -34,6 +37,7 @@ class DailyMetrics:
     gco2_counterfactual: float
     gco2_avoided: float
     est_usd_saved: float
+    money_saved: float
     real_world_equivalent: str
 
 
@@ -57,7 +61,7 @@ def compute_daily(decisions: Iterable[dict], date: str) -> DailyMetrics:
             avg_intensity_gco2_per_kwh=0.0, min_intensity_gco2_per_kwh=0.0, max_intensity_gco2_per_kwh=0.0,
             vcpu_hours_run=0.0, vcpu_hours_paused=0.0,
             energy_kwh=0.0, gco2_actual=0.0, gco2_counterfactual=0.0,
-            gco2_avoided=0.0, est_usd_saved=0.0,
+            gco2_avoided=0.0, est_usd_saved=0.0, money_saved=0.0,
             real_world_equivalent="no activity today",
         )
 
@@ -92,6 +96,13 @@ def compute_daily(decisions: Iterable[dict], date: str) -> DailyMetrics:
     scale_up_events = sum(1 for d in decisions if d["action"] == "scale_up" and d.get("batch_changed"))
     scale_down_events = sum(1 for d in decisions if d["action"] == "scale_down" and d.get("batch_changed"))
 
+    # Demo-friendly "money_saved": vCPU-hours that ran in clean windows, valued at Fargate pricing
+    # with a SAVINGS_RATIO discount assumption (off-peak / spot-like savings when shifted to green).
+    max_vcpus_green = int(os.environ.get("MAX_VCPUS_GREEN", "16"))
+    scale_up_count = len(green)
+    vcpu_hrs_green = scale_up_count * (TICK_MINUTES_GREEN / 60.0) * max_vcpus_green
+    money_saved = round(vcpu_hrs_green * USD_PER_VCPU_HOUR * SAVINGS_RATIO, 2)
+
     return DailyMetrics(
         date=date,
         ticks=len(decisions),
@@ -109,6 +120,7 @@ def compute_daily(decisions: Iterable[dict], date: str) -> DailyMetrics:
         gco2_counterfactual=round(gco2_counterfactual, 1),
         gco2_avoided=round(gco2_avoided, 1),
         est_usd_saved=round(est_usd_saved, 2),
+        money_saved=money_saved,
         real_world_equivalent=_real_world_equivalent(gco2_avoided),
     )
 

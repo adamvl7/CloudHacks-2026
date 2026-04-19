@@ -127,6 +127,11 @@ def _fetch_region_decisions(region: dict) -> list[dict]:
 
 def _fallback_narrative(metrics: dict, error: Exception | None = None) -> str:
     product_name = "Nimbus"
+    clean_pct = 0
+    saved_pct = 0
+    if metrics.get("ticks"):
+        clean_pct = round((float(metrics.get("green_ticks", 0)) / float(metrics["ticks"])) * 100)
+        saved_pct = round((float(metrics.get("dirty_ticks", 0)) / float(metrics["ticks"])) * 100)
     region_text = ""
     if metrics.get("region") and metrics.get("zone"):
         region_text = (
@@ -151,9 +156,9 @@ def _fallback_narrative(metrics: dict, error: Exception | None = None) -> str:
         f"{metrics['vcpu_hours_run']} vCPU-hours and deferred {metrics['vcpu_hours_paused']} "
         f"vCPU-hours, avoiding an estimated {metrics['gco2_avoided']} gCO2. "
         f"That is {metrics['real_world_equivalent']}.\n\n"
-        f"Estimated avoided compute-window cost exposure was ${metrics['est_usd_saved']:.2f}. "
-        "The practical takeaway: time-flexible Batch work stayed aligned with cleaner grid "
-        "windows while preserving the queue for the next green period."
+        f"{product_name} saved {saved_pct}% by pausing time-flexible work during dirty "
+        "grid windows. The queue stays ready for the next green period, showing how schedulers "
+        "can meaningfully reduce emissions at scale."
         f"{suffix}"
     )
 
@@ -227,11 +232,12 @@ def _report_window(event: dict) -> tuple[str, str, datetime, datetime]:
 
 def _store_summary(report: dict) -> None:
     table = _ddb.Table(DYNAMO_TABLE)
-    region = report.get("region")
-    pk = f"summary#{region}" if region else "summary"
-    table.put_item(Item={
+    # Always key per-region so every run produces a new record per region.
+    region = report.get("region") or os.environ.get("REGION") or os.environ.get("AWS_REGION") or DEFAULT_REGION
+    pk = f"summary#{region}"
+    item = {
         "pk": pk,
-        "sk": report["generated_at"],
+        "sk": report["date"],          # one record per region per UTC day (overwrites on re-generate)
         "date": report["date"],
         "report_type": report["report_type"],
         "window_start": report["window_start"],
@@ -240,13 +246,15 @@ def _store_summary(report: dict) -> None:
         "narrative": report["narrative"],
         "archive": report["archive"],
         "generated_at": report["generated_at"],
-        **({
-            "region": report["region"],
-            "region_name": report["region_name"],
-            "zone": report["zone"],
-            "threshold": report["threshold"],
-        } if region else {}),
-    })
+        "region": region,
+    }
+    if report.get("region_name"):
+        item["region_name"] = report["region_name"]
+    if report.get("zone"):
+        item["zone"] = report["zone"]
+    if report.get("threshold") is not None:
+        item["threshold"] = report["threshold"]
+    table.put_item(Item=item)
 
 
 def _archive_to_s3(report: dict) -> str:
@@ -324,6 +332,18 @@ def lambda_handler(event, context):
     )
 
     metrics = to_dict(compute_daily(decisions, target_date))
+    metrics.pop("money_saved", None)
+    metrics.pop("est_usd_saved", None)
+    if metrics.get("ticks"):
+        metrics["clean_pct"] = round(
+            (float(metrics.get("green_ticks", 0)) / float(metrics["ticks"])) * 100
+        )
+        metrics["saved_pct"] = round(
+            (float(metrics.get("dirty_ticks", 0)) / float(metrics["ticks"])) * 100
+        )
+    else:
+        metrics["clean_pct"] = 0
+        metrics["saved_pct"] = 0
     if region:
         metrics.update({
             "region": region["region"],

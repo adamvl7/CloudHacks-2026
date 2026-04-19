@@ -1,39 +1,39 @@
 # nimbus-backend summary
 
 ## Files changed
-- `lambdas/chat/handler.py` (new) — Bedrock-grounded Q&A Lambda
-- `lambdas/chat/requirements.txt` (new) — `boto3>=1.34.0`
-- `lambdas/api/handler.py` — added `/forecast` and `/region-compare` branches + `_em_get` helper + `REGION_PRESET`
-- `template.yaml` — added `ChatFunction` resource, `POST /chat` route, `GetForecast` + `GetRegionCompare` events on `ApiFunction`; extended `DashboardApi` CORS to allow `POST`
+- `lambdas/reporter/bedrock_client.py` - new 3-paragraph, 200-300 word prompt; default model = `anthropic.claude-sonnet-4-5-20250929-v1:0` via `BEDROCK_MODEL_ID`.
+- `lambdas/reporter/metrics.py` - added `money_saved` to `DailyMetrics`. Formula: `scale_up_count * (0.5/60) * MAX_VCPUS_GREEN * 0.04048 * 0.30`, rounded to 2dp.
+- `lambdas/reporter/handler.py` - `_store_summary` now always writes `pk = "summary#<region>"`, `sk = <iso timestamp>`, defaulting to `REGION` / `AWS_REGION` / `us-west-2`.
+- `lambdas/api/handler.py` - new `GET /summaries` endpoint. `get_latest_summary` now scans all per-region pks plus legacy `"summary"` pk (back-compat), so Overview page keeps working.
+- `template.yaml` - `BedrockModelId` default changed to `anthropic.claude-sonnet-4-5-20250929-v1:0`. Reporter IAM: dropped `aws-marketplace:*`; Bedrock `Resource` now uses foundation-model ARNs plus an inference-profile line and a `anthropic.claude-*` wildcard. Added `REGION: !Ref AWS::Region` env. Reporter schedule is now `rate(10 minutes)` (`EveryTenMinutes`). New `GetSummaries` HttpApi event wired to `/summaries`.
+- `samconfig.toml` - `BedrockModelId` override updated to the same direct model ID.
 
-## New API routes
+## Bedrock AccessDeniedException fix
+Picked Option A (model switch). Changed from inference-profile ID `global.anthropic.claude-sonnet-4-6` to the direct foundation model `anthropic.claude-sonnet-4-5-20250929-v1:0`, which does not require an AWS Marketplace subscription. IAM simplified (`aws-marketplace:*` removed).
 
-- `POST /chat` (ChatFunction)
-  - Request: `{ "question": string, "hours": int }` (hours defaults to 24, clamped 1–168)
-  - Response: `{ "answer": string, "grounding": { "decisions_used": int, "zone": string } }`
-  - Decline / error responses still use the same envelope with `answer` holding an apology string; HTTP 400 on missing question, 500 on Bedrock failure.
+## New / changed API contract
+- `GET /summaries?limit=20` -> `{ "summaries": [ { region, date, timestamp, narrative, metrics } ] }` desc by timestamp, default 20, max 100.
+- `GET /summary/latest` shape unchanged; also reads per-region pks with legacy fallback.
 
-- `GET /forecast` (ApiFunction)
-  - Response: `{ "zone": string, "threshold": number, "forecast": [ { "datetime": iso-str, "carbonIntensity": number } ] }` (max 24 entries)
+## DynamoDB key shape
+- Summaries: `pk = "summary#<aws-region>"`, `sk = <iso generated_at>`. Fields: `date, report_type, window_start, window_end, metrics, narrative, archive, generated_at, region[, region_name, zone, threshold]`.
+- Decisions: unchanged.
 
-- `GET /region-compare` (ApiFunction)
-  - Response: `{ "current_zone": string, "regions": [ { "zone": string, "carbonIntensity": number, "label": string } ] }`
-  - Individual upstream failures are skipped; partial results are returned.
+## Narrative
+Prompt targets exactly three paragraphs totaling ~200-300 words, referencing region/region_name, ticks, scale_up vs scale_down, clean %, avg/min/max intensity, `money_saved` (as USD), and a closing forward-looking impact sentence.
 
-## New env vars / IAM in `template.yaml`
-
-ChatFunction env vars: `DYNAMO_TABLE`, `GRID_ZONE`, `GREEN_THRESHOLD_GCO2`, `BEDROCK_MODEL_ID`.
-ChatFunction IAM: `DynamoDBReadPolicy` on `DecisionsTable` + explicit `bedrock:InvokeModel` on `arn:aws:bedrock:${Region}::foundation-model/${BedrockModelId}` (mirrors ReporterFunction).
-ApiFunction: no new IAM — existing `secretsmanager:GetSecretValue` on the ElectricityMaps secret already covers forecast/region-compare.
-CORS: `DashboardApi.AllowMethods` now `[GET, POST, OPTIONS]`.
+## Env vars / IAM
+- Reporter env: `REGION` (set from `AWS::Region`).
+- Reporter IAM Bedrock resources: `foundation-model/${BedrockModelId}` (specific and `*` region variants), `inference-profile/${BedrockModelId}` (fallback), and `foundation-model/anthropic.claude-*` (fallback for alternate Claude models).
 
 ## Validation
-
-- `python -m py_compile` — not runnable in this session (bash denied by sandbox). Files were re-read after edits and reviewed manually; syntax is clean Python 3.12, consistent with the existing api/reporter handlers.
-- `sam validate --lint` — could not be executed (bash denied). Template change is additive and mirrors the existing ReporterFunction / ApiFunction patterns.
+- `python -m py_compile` and `sam validate --lint` / `sam build` / `sam deploy` were blocked in this session (Bash permission denied by the sandbox). Files were re-read after edits and are syntactically consistent. Please run locally:
+  - `python -m py_compile lambdas/reporter/handler.py lambdas/reporter/bedrock_client.py lambdas/reporter/metrics.py lambdas/api/handler.py`
+  - `sam validate --lint`
+  - `"/c/Program Files/Amazon/AWSSAMCLI/bin/sam.cmd" build && sam deploy`
+  - Tail `/aws/lambda/ecoshift-reporter` to confirm Bedrock now succeeds and a `summary#us-west-2` item appears in DynamoDB.
 
 ## Frontend notes
-
-- New `POST /chat` is live on the same `DashboardApi` base URL; include `Content-Type: application/json`. Expect `grounding.decisions_used == 0` before the seeder has populated DynamoDB — the assistant will say so.
-- `/forecast` and `/region-compare` are plain GETs with the shapes above; safe to call from the existing axios client.
-- ChatFunction uses the same Bedrock model id as the reporter (`BedrockModelId` SAM param, default `anthropic.claude-sonnet-4-6`).
+- New endpoint `/summaries` is available for a reports-history view.
+- `/summary/latest` unchanged; still returns the most recent summary.
+- Each summary exposes `metrics.money_saved` (USD float) for the SavingsCard.
