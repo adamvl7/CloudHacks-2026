@@ -6,6 +6,7 @@ Routes:
   GET /current                 -> latest single decision (current grid state)
   GET /regions                 -> dashboard region viewer options
   GET /grid/current?region=... -> live carbon intensity for selected region
+  GET /grid/history?region=... -> recent carbon intensity history for selected region
   GET /power-breakdown         -> live energy mix from ElectricityMaps
   GET /forecast                -> 24h carbon-intensity forecast for selected region
   GET /region-compare          -> current intensity across configured regions
@@ -30,6 +31,8 @@ DYNAMO_TABLE = os.environ["DYNAMO_TABLE"]
 THRESHOLD = float(os.environ.get("GREEN_THRESHOLD_GCO2", "250"))
 GRID_ZONE = os.environ.get("GRID_ZONE", "US-CAL-CISO")
 ELECTRICITYMAPS_SECRET_NAME = os.environ.get("ELECTRICITYMAPS_SECRET_NAME", "ecoshift/electricitymaps-api-key")
+VCPUS_GREEN = int(os.environ.get("MAX_VCPUS_GREEN", "16"))
+VCPUS_DIRTY = int(os.environ.get("MAX_VCPUS_DIRTY", "0"))
 
 _ddb = boto3.resource("dynamodb")
 
@@ -102,6 +105,29 @@ def get_grid_current(region: dict) -> dict:
         "carbonIntensity": float(ci) if ci is not None else None,
         "datetime": data.get("datetime") or data.get("updatedAt"),
     }
+
+
+def get_grid_history(region: dict) -> dict:
+    data = _em_get(
+        f"/carbon-intensity/history?zone={region['zone']}&temporalGranularity=15_minutes"
+    )
+    raw = data.get("history") or data.get("data") or []
+    history = []
+    for entry in raw:
+        dt = entry.get("datetime") or entry.get("time")
+        ci = entry.get("carbonIntensity")
+        if dt is None or ci is None:
+            continue
+        intensity = float(ci)
+        is_green = intensity <= float(region["threshold"])
+        history.append({
+            "datetime": dt,
+            "carbonIntensity": intensity,
+            "action": "scale_up" if is_green else "scale_down",
+            "batch_target_vcpus": VCPUS_GREEN if is_green else VCPUS_DIRTY,
+        })
+    history.sort(key=lambda x: x.get("datetime", ""))
+    return {**region, "history": history}
 
 
 def get_power_breakdown(region: dict) -> dict:
@@ -230,6 +256,10 @@ def lambda_handler(event, context):
         if path == "/grid/current":
             region = _selected_region(qs)
             return _response(200, get_grid_current(region))
+
+        if path == "/grid/history":
+            region = _selected_region(qs)
+            return _response(200, get_grid_history(region))
 
         if path == "/power-breakdown":
             region = _selected_region(qs)

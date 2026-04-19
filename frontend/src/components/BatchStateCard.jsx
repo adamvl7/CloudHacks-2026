@@ -15,27 +15,27 @@ export default function BatchStateCard({ action, vcpus, checkedAt }) {
   const isRunning = action === 'scale_up'
   if (action == null) {
     return (
-      <div className="loader-text">waiting for first tick…</div>
+      <div className="loader-text">loading region preview...</div>
     )
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div className="bsc-state">
         <span className={`bsc-dot ${isRunning ? 'running' : 'paused'}`} />
-        <span className="bsc-state-label">{isRunning ? 'Running' : 'Paused'}</span>
+        <span className="bsc-state-label">{isRunning ? 'Run' : 'Pause'}</span>
       </div>
       <div className="bsc-vcpus">
-        target vCPUs · <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{String(vcpus ?? '—')}</strong>
+        preview vCPUs - <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{String(vcpus ?? '—')}</strong>
       </div>
       <div className="bsc-time">
-        last check · <strong>{relTime(checkedAt)}</strong>
+        grid sample - <strong>{relTime(checkedAt)}</strong>
       </div>
       <div className="bsc-tags">
         <span className="bsc-tag">
-          {isRunning ? '▲' : '▼'} ETL Pipeline
+          {isRunning ? '▲' : '▼'} ETL Pipeline preview
         </span>
         <span className="bsc-tag">
-          {isRunning ? '▲' : '▼'} ML Training
+          {isRunning ? '▲' : '▼'} ML Training preview
         </span>
       </div>
     </div>

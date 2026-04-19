@@ -8,12 +8,11 @@ import PowerBreakdown from './components/PowerBreakdown.jsx'
 import ForecastStrip from './components/ForecastStrip.jsx'
 import RegionCompareBanner from './components/RegionCompareBanner.jsx'
 import {
-  getCurrent,
-  getDecisions,
   getLatestSummary,
   generateSummary,
   getRegions,
   getGridCurrent,
+  getGridHistory,
   getPowerBreakdown,
   getForecast,
   getRegionCompare,
@@ -160,6 +159,18 @@ function formatRegionOption(region) {
   return `${region.region} - ${region.name} - ${region.zone} - ${region.threshold} gCO2/kWh`
 }
 
+function normalizeHistoryPoint(point) {
+  const datetime = point.datetime || point.time || point.sk
+  const intensity = Number(point.carbonIntensity ?? point.carbon_intensity)
+  if (!datetime || !Number.isFinite(intensity)) return null
+  return {
+    sk: datetime,
+    carbon_intensity: intensity,
+    action: point.action,
+    batch_target_vcpus: Number(point.batch_target_vcpus ?? 0),
+  }
+}
+
 function nextUtcMidnight(from = new Date()) {
   return new Date(Date.UTC(
     from.getUTCFullYear(),
@@ -181,7 +192,7 @@ function formatCountdown(ms) {
 function OverviewPage({ data }) {
   const { intensity, threshold, zone, selectedRegionOption, action, targetVcpus, lastCheckedAt,
           decisions, timelineData, summary, powerBreakdown, forecast, regionCompare,
-          schedulerThreshold, gaugeStyle } = data
+          gaugeStyle } = data
 
   return (
     <>
@@ -193,15 +204,15 @@ function OverviewPage({ data }) {
           <div className="region-meta">{formatRegionOption(selectedRegionOption)}</div>
         </div>
         <div className="card">
-          <div className="card-label">Batch Status</div>
+          <div className="card-label">Shift Recommendation</div>
           <BatchStateCard action={action} vcpus={targetVcpus} checkedAt={lastCheckedAt} />
         </div>
         <div className="card">
-          <div className="card-label">Savings · Last 24h</div>
-          <SavingsCard decisions={decisions} summary={summary} />
+          <div className="card-label">Preview Savings - Last 24h</div>
+          <SavingsCard decisions={decisions} summary={null} />
         </div>
         <div className="card">
-          <div className="card-label">Decision Counts · 24h</div>
+          <div className="card-label">Preview Counts - 24h</div>
           <DecisionCounts decisions={decisions} />
         </div>
       </div>
@@ -212,8 +223,8 @@ function OverviewPage({ data }) {
       </div>
 
       <div className="card mb16">
-        <div className="card-label">24h Decision Timeline</div>
-        <TimelineChart data={timelineData} threshold={schedulerThreshold} />
+        <div className="card-label">Selected Region Timeline - 24h</div>
+        <TimelineChart data={timelineData} threshold={threshold} />
       </div>
 
       <div className="grid g2">
@@ -236,7 +247,7 @@ function OverviewPage({ data }) {
 }
 
 function TimelinePage({ data }) {
-  const { decisions, timelineData, threshold } = data
+  const { decisions, timelineData, threshold, zone, selectedRegionOption } = data
   const green = decisions.filter(d => d.action === 'scale_up').length
   const dirty = decisions.filter(d => d.action === 'scale_down').length
   const total = green + dirty
@@ -251,16 +262,16 @@ function TimelinePage({ data }) {
     <>
       <div className="grid g4 mb16">
         <div className="card">
-          <div className="card-label">Total Decisions</div>
+          <div className="card-label">Preview Decisions</div>
           <div className="stat-value">{total}</div>
           <div className="stat-label">last 24h</div>
         </div>
         <div className="card">
-          <div className="card-label">Clean Share</div>
+          <div className="card-label">Runnable Share</div>
           <div className="stat-value" style={{ color: 'var(--green)' }}>
             {cleanShare != null ? `${cleanShare}%` : '—'}
           </div>
-          <div className="stat-label">scale-up decisions</div>
+          <div className="stat-label">would run</div>
         </div>
         <div className="card">
           <div className="card-label">Avg Intensity</div>
@@ -275,14 +286,15 @@ function TimelinePage({ data }) {
       </div>
 
       <div className="card mb16">
-        <div className="card-label">Decision Timeline · 24h</div>
+        <div className="card-label">Selected Region Timeline - 24h</div>
         <TimelineChart data={timelineData} threshold={threshold} />
       </div>
 
       <div className="card">
-        <div className="card-label">Decision Log</div>
+        <div className="card-label">Preview Decision Log - {zone}</div>
+        <div className="region-meta" style={{ textAlign: 'left' }}>{formatRegionOption(selectedRegionOption)}</div>
         {decisions.length === 0 ? (
-          <div className="loader-text">No decisions recorded yet</div>
+          <div className="loader-text">No region history loaded yet</div>
         ) : (
           <div className="log-scroll">
             <table className="log-table">
@@ -526,12 +538,11 @@ export default function App() {
   const [tweaks, setTweaks] = useState({ scheme: 'aws' })
 
   // data
-  const [current, setCurrent] = useState(null)
-  const [decisions, setDecisions] = useState([])
   const [summary, setSummary] = useState(null)
   const [regionOptions, setRegionOptions] = useState(FALLBACK_REGION_OPTIONS)
   const [selectedRegion, setSelectedRegion] = useState(getInitialRegion)
   const [gridCurrent, setGridCurrent] = useState(null)
+  const [regionalHistory, setRegionalHistory] = useState(null)
   const [powerBreakdown, setPowerBreakdown] = useState(null)
   const [forecast, setForecast] = useState(null)
   const [regionCompare, setRegionCompare] = useState(null)
@@ -574,20 +585,18 @@ export default function App() {
     let cancelled = false
     async function load() {
       try {
-        const [c, d, s, gc, pb, fc, rc] = await Promise.all([
-          getCurrent().catch(() => null),
-          getDecisions(24).catch(() => []),
+        const [s, gc, gh, pb, fc, rc] = await Promise.all([
           getLatestSummary().catch(() => null),
           getGridCurrent(selectedRegion).catch(() => null),
+          getGridHistory(selectedRegion).catch(() => null),
           getPowerBreakdown(selectedRegion).catch(() => null),
           getForecast(selectedRegion).catch(() => null),
           getRegionCompare(selectedRegion).catch(() => null),
         ])
         if (cancelled) return
-        setCurrent(c)
-        setDecisions(Array.isArray(d) ? d : [])
         setSummary(s)
         setGridCurrent(gc)
+        setRegionalHistory(gh)
         setPowerBreakdown(pb)
         setForecast(fc)
         setRegionCompare(rc)
@@ -610,25 +619,31 @@ export default function App() {
     ? Number(gridCurrent.carbonIntensity) : null
   const threshold = gridCurrent?.threshold ?? selectedRegionOption?.threshold ?? 250
   const zone = gridCurrent?.zone ?? selectedRegionOption?.zone ?? 'US-NW-BPAT'
-  const schedulerThreshold = current?.threshold ?? 250
-  const action = current?.decision?.action
-  const targetVcpus = current?.decision?.batch_target_vcpus
-  const lastCheckedAt = current?.decision?.sk ? new Date(current.decision.sk) : null
   const isGreen = intensity != null && intensity <= threshold
+  const regionalDecisions = useMemo(() => {
+    const raw = Array.isArray(regionalHistory?.history) ? regionalHistory.history : []
+    return raw.map(normalizeHistoryPoint).filter(Boolean)
+  }, [regionalHistory])
+  const latestRegionalDecision = regionalDecisions[regionalDecisions.length - 1] || null
+  const action = latestRegionalDecision?.action || (isGreen ? 'scale_up' : intensity == null ? null : 'scale_down')
+  const targetVcpus = latestRegionalDecision?.batch_target_vcpus
+  const lastCheckedAt = latestRegionalDecision?.sk
+    ? new Date(latestRegionalDecision.sk)
+    : gridCurrent?.datetime ? new Date(gridCurrent.datetime) : null
 
   const timelineData = useMemo(() =>
-    decisions.map(d => ({
+    regionalDecisions.map(d => ({
       t: new Date(d.sk).getTime(),
       intensity: Number(d.carbon_intensity),
       action: d.action,
       vcpus: Number(d.batch_target_vcpus ?? 0),
     }))
-  , [decisions])
+  , [regionalDecisions])
 
   const pageData = {
     intensity, threshold, zone, action, targetVcpus, lastCheckedAt, isGreen,
-    decisions, timelineData, summary, setSummary, powerBreakdown, forecast, regionCompare,
-    schedulerThreshold, selectedRegionOption,
+    decisions: regionalDecisions, timelineData, summary, setSummary, powerBreakdown, forecast, regionCompare,
+    selectedRegionOption,
     gaugeStyle: 'arc',
   }
 

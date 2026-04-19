@@ -39,6 +39,11 @@ export async function getGridCurrent(region) {
   return data
 }
 
+export async function getGridHistory(region) {
+  const { data } = await client.get('/grid/history', { params: { region } })
+  return data
+}
+
 export async function getPowerBreakdown(region) {
   try {
     const { data } = await client.get('/power-breakdown', { params: { region } })

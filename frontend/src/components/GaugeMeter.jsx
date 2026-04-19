@@ -37,7 +37,10 @@ function StatusBadge({ isGreen, intensity }) {
 /* ─── Arc Gauge ─── */
 function ArcGauge({ pct, color, value, threshold, intensity }) {
   const MAX = 600
-  const cx = 120, cy = 92, r = 84
+  const cx = 120, cy = 112, r = 86
+  const clampedThreshold = Math.min(MAX, Math.max(0, Number(threshold) || 0))
+  const greenEnd = clampedThreshold / MAX
+  const amberEnd = Math.min(1, (clampedThreshold + 120) / MAX)
   const angle = Math.PI * pct
   const needleX = cx - r * Math.cos(angle)
   const needleY = cy - r * Math.sin(angle)
@@ -54,18 +57,18 @@ function ArcGauge({ pct, color, value, threshold, intensity }) {
   }
 
   // threshold tick
-  const tA = Math.PI * (threshold / MAX)
+  const tA = Math.PI * greenEnd
   const tIn  = { x: cx - (r-11)*Math.cos(tA), y: cy - (r-11)*Math.sin(tA) }
   const tOut = { x: cx - (r+11)*Math.cos(tA), y: cy - (r+11)*Math.sin(tA) }
 
   return (
-    <svg viewBox="0 0 240 100" width="240" height="100" style={{overflow:'visible'}}>
+    <svg viewBox="0 0 240 150" width="100%" height="150" style={{display:'block', maxWidth:260, overflow:'hidden'}}>
       {/* track */}
       {arc(0, 1, 'var(--border)', 10)}
       {/* zone arcs */}
-      {arc(0, 250/MAX, 'rgba(58,158,100,0.35)', 10)}
-      {arc(250/MAX, 400/MAX, 'rgba(181,117,42,0.35)', 10)}
-      {arc(400/MAX, 1, 'rgba(192,57,43,0.35)', 10)}
+      {greenEnd > 0 && arc(0, greenEnd, 'rgba(58,158,100,0.35)', 10)}
+      {amberEnd > greenEnd && arc(greenEnd, amberEnd, 'rgba(181,117,42,0.35)', 10)}
+      {amberEnd < 1 && arc(amberEnd, 1, 'rgba(192,57,43,0.35)', 10)}
       {/* progress arc */}
       {intensity != null && arc(0, pct, color, 10)}
       {/* threshold tick */}
@@ -178,7 +181,7 @@ export default function GaugeMeter({ intensity, threshold = 250, gaugeStyle = 'a
   const isGreen = intensity != null && intensity <= threshold
 
   return (
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,padding:'4px 0'}}>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10,padding:'2px 0',overflow:'hidden',width:'100%'}}>
       {gaugeStyle === 'ring' && <RingGauge pct={pct} color={color} value={value} />}
       {gaugeStyle === 'bar'  && <BarGauge  pct={pct} color={color} value={value} />}
       {gaugeStyle === 'arc'  && (

@@ -334,6 +334,8 @@ Resources:
           DYNAMO_TABLE: !Ref DecisionsTable
           GREEN_THRESHOLD_GCO2: !Ref GreenThresholdGCO2
           GRID_ZONE: !Ref GridZone
+          MAX_VCPUS_GREEN: !Ref MaxVcpusGreen
+          MAX_VCPUS_DIRTY: !Ref MaxVcpusDirty
           ELECTRICITYMAPS_SECRET_NAME: ecoshift/electricitymaps-api-key
       Policies:
         - DynamoDBReadPolicy: {TableName: !Ref DecisionsTable}
@@ -371,6 +373,12 @@ Resources:
           Properties:
             ApiId: !Ref DashboardApi
             Path: /grid/current
+            Method: GET
+        GetGridHistory:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /grid/history
             Method: GET
         GetPowerBreakdown:
           Type: HttpApi
